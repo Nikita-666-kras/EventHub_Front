@@ -1,0 +1,43 @@
+@import './base.css';
+
+#app {
+  max-width: 100vw;
+  min-width: 100vh;
+  justify-content: center; /* Выравнивание по центру */
+  align-items: center; /* Выравнивание по центру */
+  min-height: 100vh;
+  padding: 0  ;
+  background-color: #150A1E;
+  margin: 0 ; /* Центрируем по горизонтали */
+  font-weight: normal;
+}
+
+a,
+.green {
+  text-decoration: none;
+  color: #ffffff;
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (hover: hover) {
+  a:hover {
+    background-color: #575757;
+    
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    display: flex;
+    /* max-width: 100vw; */
+    place-items: center;
+  }
+
+  #app {
+    display: flex;
+    width: 100vw;
+    /* grid-template-columns: 1fr 1fr; */
+    /* padding: 0 5vw; */
+  }
+}
