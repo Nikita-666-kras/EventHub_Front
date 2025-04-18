@@ -54,7 +54,7 @@
     gap: 1.5rem;
   }
   .iconss{
-  
+    border: none;
   }
   
   .nav-icons img,

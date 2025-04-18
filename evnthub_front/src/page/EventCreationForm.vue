@@ -20,7 +20,6 @@
                     </div>
                 </div>
 
-
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Дата</label>
@@ -34,45 +33,37 @@
                         <label>Макс кол-во участников</label>
                         <input type="number" v-model="event.maxParticipants" />
                     </div>
-
-                    <div class="form-group">
+                    <div class="form-group location-wrapper">
                         <label>Место</label>
-                        <select v-model="event.location">
-                            <option>Площадь Гагарина, 1, Ростов-на-Дону</option>
-                        </select>
+                        <input type="text" v-model="event.location" @input="handleAddressInput"
+                            placeholder="Начните вводить адрес..." autocomplete="off" />
+                        <ul v-if="suggestions.length" class="suggestions-list">
+                            <li v-for="(s, i) in suggestions" :key="i" @click="selectSuggestion(s)">
+                                {{ s.value }}
+                            </li>
+                        </ul>
                     </div>
                 </div>
-
 
                 <div class="form-group">
                     <label>Формат мероприятия</label>
                     <div class="format-icons">
                         <div class="ww">
-                            
                             <div class="format-option" :class="{ active: event.format === 'offline' }"
                                 @click="event.format = 'offline'">
-                                
                                 <img src="@/assets/icons/offline.png" alt="Offline" />
                             </div>
                             <p>Оффлайн</p>
                         </div>
-                        <div  class="ww">
-                            
+                        <div class="ww">
                             <div class="format-option" :class="{ active: event.format === 'online' }"
                                 @click="event.format = 'online'">
-                                
                                 <img src="@/assets/icons/online.png" alt="Online" />
                             </div>
                             <p>Онлайн</p>
                         </div>
-                        
-                        
                     </div>
                 </div>
-
-
-
-
 
                 <div class="group-section">
                     <label>Объединение в группу</label>
@@ -125,11 +116,11 @@
                         <input v-model="field.description" placeholder="Описание" />
                         <button @click="removeField(index)">×</button>
                     </div>
-
                     <button class="add-field" @click="addField">Добавить новое поле</button>
                 </div>
+
                 <div class="create_event">
-                    <button class="create">Отправить</button>
+                    <button class="create" @click="submitEvent">Отправить</button>
                 </div>
             </div>
 
@@ -137,7 +128,7 @@
                 <h4>Мои мероприятия</h4>
                 <div class="upcoming-event" v-for="n in 2" :key="n">
                     <p>название мероприятия</p>
-                    <p>📅 Дата начала: 20.03.2024</p>
+                    <p>🗓️ Дата начала: 20.03.2024</p>
                 </div>
                 <button class="submit-btn" @click="submitEvent">Создать мероприятие</button>
             </div>
@@ -148,12 +139,11 @@
 <script setup>
 import NavBar from '@/components/nav_bar.vue'
 import { ref } from 'vue'
- // по умолчанию
+import axios from 'axios'
 
 const imageFile = ref(null)
 const imagePreview = ref('')
-
-
+const suggestions = ref([])
 
 const event = ref({
     title: '',
@@ -167,7 +157,6 @@ const event = ref({
     fields: []
 })
 
-
 const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
@@ -180,8 +169,6 @@ const handleImageUpload = (e) => {
     }
 }
 
-
-
 const addField = () => {
     event.value.fields.push({ label: '', type: 'text', options: '', description: '' })
 }
@@ -192,7 +179,31 @@ const removeField = (index) => {
 
 const submitEvent = () => {
     console.log('Отправка мероприятия:', event.value)
-    // axios.post('/api/event', event.value) — если готов бэкенд
+    // axios.post('/api/event', event.value)
+}
+
+const handleAddressInput = async () => {
+    if (!event.value.location) return
+    try {
+        const res = await axios.post(
+            'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
+            { query: event.value.location },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Token b19db130def2050e565e36e7a7f6259dae6bb911'
+                }
+            }
+        )
+        suggestions.value = res.data.suggestions || []
+    } catch (err) {
+        console.error('Ошибка подсказки адреса:', err)
+    }
+}
+
+const selectSuggestion = (suggestion) => {
+    event.value.location = suggestion.value
+    suggestions.value = []
 }
 </script>
 
@@ -222,19 +233,19 @@ const submitEvent = () => {
     height: 30px;
 }
 
-.create{
-    
+.create {
+
     background: linear-gradient(to right, #3b82f6, #9333ea);
     color: white;
     padding: 0.6rem 1.2rem;
     border: none;
-    font-size: larger ;
+    font-size: larger;
     border-radius: 8px;
     margin-top: 1rem;
     cursor: pointer;
 }
 
-.create_event{
+.create_event {
     display: flex;
     justify-content: center;
 }
@@ -245,7 +256,7 @@ const submitEvent = () => {
 }
 
 
-.ww{
+.ww {
     display: grid;
     gap: 0.5rem;
     justify-content: center;
@@ -277,9 +288,46 @@ const submitEvent = () => {
     flex: 2;
 }
 
-.group-section select{
+.group-section select {
     margin-top: 1rem;
 }
+
+
+
+.suggestions-list {
+  background: #333;
+  list-style: none;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  border: 1px solid #555;
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  position: absolute;
+  z-index: 10;
+  width: 100%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.suggestions-list li {
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestions-list li:hover {
+  background: #444;
+}
+
+.location-wrapper {
+  position: relative;
+}
+
+
+
+
 
 .event-sidebar {
     background: #222;
@@ -310,7 +358,8 @@ textarea.event-description {
     gap: 1rem;
     margin-bottom: 1rem;
 }
-.form-group{
+
+.form-group {
     text-align: center;
 }
 
@@ -337,11 +386,13 @@ select {
     text-align: center;
 
 }
-.group-section label{
+
+.group-section label {
     font-size: larger;
     font-weight: bold;
     padding-bottom: 1rem;
 }
+
 .dynamic-fields {
     background: #333;
     border-radius: 10px;
