@@ -68,19 +68,44 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed } from 'vue'
+import api from '@/utils/axios' // свой инстанс с baseURL и withCredentials
 
-const email = ref('');
-const password = ref('');
+const email = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+const error = ref(null)
 
-const isValid = computed(() => email.value && password.value);
+const isValid = computed(() =>
+  email.value && password.value && password.value === confirmPassword.value
+)
 
-const login = () => {
-  if (isValid.value) {
-    console.log('Logging in with:', email.value, password.value);
+const register = async () => {
+  if (!isValid.value) {
+    error.value = 'Пароли не совпадают или поля пустые'
+    return
   }
-};
+
+  try {
+    const response = await api.post('/auth/login', {
+      email: email.value,
+      password: password.value
+    })
+
+    // Если токен в теле — сохраняем вручную (если нужно)
+    if (response.data.token) {
+      document.cookie = `jwt=${response.data.token}; path=/;`
+    }
+
+    // Переход после успешной регистрации
+    window.location.href = '/lenta'
+  } catch (err) {
+    console.error(err)
+    error.value = err.response?.data?.message || 'Ошибка при регистрации'
+  }
+}
 </script>
+
 
 <style scoped>
 

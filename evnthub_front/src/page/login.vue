@@ -54,19 +54,44 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed } from 'vue'
+import api from '@/utils/axios'
 
-const email = ref('');
-const password = ref('');
+const email = ref('')
+const password = ref('')
+const error = ref(null)
 
-const isValid = computed(() => email.value && password.value);
+const isValid = computed(() => email.value && password.value)
 
-const login = () => {
-  if (isValid.value) {
-    console.log('Logging in with:', email.value, password.value);
+const login = async () => {
+  if (!isValid.value) return
+
+  try {
+    const response = await api.post(
+      '/auth/login', // путь к API
+      {
+        email: email.value,
+        password: password.value,
+      },
+      {
+        withCredentials: true // для поддержки HttpOnly куки
+      }
+    )
+
+    // ✅ если токен приходит в теле — сохраняем вручную:
+    if (response.data.token) {
+      document.cookie = `jwt=${response.data.token}; path=/;`
+    }
+
+    // ✅ можешь тут редиректить
+    window.location.href = '/user'
+  } catch (err) {
+    error.value = 'Неверный логин или пароль'
+    console.error(err)
   }
-};
+}
 </script>
+
 
 <style scoped>
 

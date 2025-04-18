@@ -4,12 +4,14 @@ import registation from '@/page/registation.vue'
 import main from '@/page/main_page.vue'
 import lenta from '@/page/lenta.vue'
 import user from '@/page/ProfileView.vue'
+import eventCreate from '@/page/EventCreationForm.vue'
 const routes = [
   { path: '/login', component: LoginView },
   {path: '/register', component: registation},
   {path: '/', component: main},
   {path: '/lenta', component: lenta},
-  {path: '/user', component: user}
+  {path: '/user', component: user},
+  {path: '/event_create' , component: eventCreate}
 ]
 
 const router = createRouter({
