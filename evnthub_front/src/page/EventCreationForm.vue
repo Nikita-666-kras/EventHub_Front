@@ -1,4 +1,5 @@
 <template>
+    <div>
     <NavBar />
     <div class="event-create-page">
         <div class="main-section">
@@ -134,6 +135,7 @@
             </div>
         </div>
     </div>
+</div>
 </template>
 
 <script setup>

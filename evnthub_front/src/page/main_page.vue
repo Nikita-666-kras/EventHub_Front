@@ -394,9 +394,7 @@ footer{
   justify-content: space-between;
   align-items: center;
 }
-.footer-list {
-  
-}
+
 .ul-footer{
   list-style: none;
 }

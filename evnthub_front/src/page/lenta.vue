@@ -1,4 +1,5 @@
 <template>
+  <div>
   <NavBar />
 
   <div class="main-wrapper">
@@ -8,6 +9,7 @@
       :event="event"
     />
   </div>
+</div>
 </template>
 
 <script setup>
