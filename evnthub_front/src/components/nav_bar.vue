@@ -7,7 +7,7 @@
             
           <router-link to="/user"><img src="@/assets/icons/user.png" alt="User" /></router-link>
           <router-link to="/event_create"><img src="@/assets/icons/calendar.png" alt="Calendar" /></router-link>
-          <router-link to="/event_create"><img src="@/assets/icons/star.png" alt="Star" /></router-link>
+          <router-link to="/stats"><img src="@/assets/icons/star.png" alt="Star" /></router-link>
           <router-link to="/stats"><img src="@/assets/icons/stats.png" alt="Stats" /></router-link>
           <router-link to="/waves"><img src="@/assets/icons/waves.png" alt="Waves" /></router-link>
         
