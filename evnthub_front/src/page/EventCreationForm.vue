@@ -1,151 +1,169 @@
 <template>
     <div>
-    <NavBar />
-    <div class="event-create-page">
-        <div class="main-section">
-            <div class="event-form">
-                <div class="header">
-                    <div class="image-upload">
-                        <label for="imageInput">
-                            <div class="image-preview"
-                                :style="{ backgroundImage: imagePreview ? `url(${imagePreview})` : '' }">
-                                <span v-if="!imagePreview">+</span>
-                            </div>
-                        </label>
-                        <input id="imageInput" type="file" accept="image/*" @change="handleImageUpload" hidden />
-                    </div>
-
-                    <div class="heade-title">
-                        <input class="event-title" v-model="event.title" placeholder="Название Мероприятия" />
-                        <textarea class="event-description" v-model="event.description" placeholder="Описание" />
-                    </div>
-                </div>
-
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Дата</label>
-                        <input type="date" v-model="event.date" />
-                    </div>
-                    <div class="form-group">
-                        <label>Время</label>
-                        <input type="time" v-model="event.time" />
-                    </div>
-                    <div class="form-group">
-                        <label>Макс кол-во участников</label>
-                        <input type="number" v-model="event.maxParticipants" />
-                    </div>
-                    <div class="form-group location-wrapper">
-                        <label>Место</label>
-                        <input type="text" v-model="event.location" @input="handleAddressInput"
-                            placeholder="Начните вводить адрес..." autocomplete="off" />
-                        <ul v-if="suggestions.length" class="suggestions-list">
-                            <li v-for="(s, i) in suggestions" :key="i" @click="selectSuggestion(s)">
-                                {{ s.value }}
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Формат мероприятия</label>
-                    <div class="format-icons">
-                        <div class="ww">
-                            <div class="format-option" :class="{ active: event.format === 'offline' }"
-                                @click="event.format = 'offline'">
-                                <img src="@/assets/icons/offline.png" alt="Offline" />
-                            </div>
-                            <p>Оффлайн</p>
+        <NavBar />
+        <div class="event-create-page">
+            <div class="main-section">
+                <div class="event-form">
+                    <div class="header">
+                        <div class="image-upload">
+                            <label for="imageInput">
+                                <div class="image-preview"
+                                    :style="{ backgroundImage: imagePreview ? `url(${imagePreview})` : '' }">
+                                    <span v-if="!imagePreview">+</span>
+                                </div>
+                            </label>
+                            <input id="imageInput" type="file" accept="image/*" @change="handleImageUpload" hidden />
                         </div>
-                        <div class="ww">
-                            <div class="format-option" :class="{ active: event.format === 'online' }"
-                                @click="event.format = 'online'">
-                                <img src="@/assets/icons/online.png" alt="Online" />
-                            </div>
-                            <p>Онлайн</p>
+
+                        <div class="heade-title">
+                            <input class="event-title" v-model="event.title" placeholder="Название Мероприятия" />
+                            <textarea class="event-description" v-model="event.description" placeholder="Описание" />
                         </div>
                     </div>
-                </div>
 
-                <div class="group-section">
-                    <label>Объединение в группу</label>
-                    <select v-model="event.grouping">
-                        <option>Группы и соло</option>
-                        <option>Только соло</option>
-                        <option>Только группы</option>
-                    </select>
-                </div>
-
-                <div class="dynamic-fields">
-                    <h3>Собираемые Данные</h3>
-
-                    <div class="field-item" v-for="(field, index) in event.fields" :key="index">
-                        <input v-model="field.label" placeholder="Название поля" />
-                        <select v-model="field.type">
-                            <option value="text">Текст</option>
-                            <option value="number">Число</option>
-                            <option value="date">Дата</option>
-                            <option value="boolean">Да/Нет</option>
-                            <option value="select">Выбор</option>
-                        </select>
-
-                        <template v-if="field.type === 'select'">
-                            <input v-model="field.options" placeholder="Варианты через запятую" />
-                            <select>
-                                <option v-for="(opt, idx) in field.options.split(',')" :key="idx">{{ opt }}</option>
-                            </select>
-                        </template>
-
-                        <template v-if="field.type === 'boolean'">
-                            <select disabled>
-                                <option>Да</option>
-                                <option>Нет</option>
-                            </select>
-                        </template>
-
-                        <template v-if="field.type === 'text'">
-                            <input disabled placeholder="Пример текста" />
-                        </template>
-
-                        <template v-if="field.type === 'number'">
-                            <input disabled type="number" placeholder="123" />
-                        </template>
-
-                        <template v-if="field.type === 'date'">
-                            <input disabled type="date" />
-                        </template>
-
-                        <input v-model="field.description" placeholder="Описание" />
-                        <button @click="removeField(index)">×</button>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Дата</label>
+                            <input type="date" v-model="event.date" />
+                        </div>
+                        <div class="form-group">
+                            <label>Время</label>
+                            <input type="time" v-model="event.time" />
+                        </div>
+                        <div class="form-group">
+                            <label>Макс кол-во участников</label>
+                            <input type="number" v-model="event.maxParticipants" />
+                        </div>
+                        <div class="form-group location-wrapper">
+                            <label>Место</label>
+                            <input type="text" v-model="event.location" @input="handleAddressInput"
+                                placeholder="Начните вводить адрес..." autocomplete="off" />
+                            <ul v-if="suggestions.length" class="suggestions-list">
+                                <li v-for="(s, i) in suggestions" :key="i" @click="selectSuggestion(s)">{{ s.value }}
+                                </li>
+                            </ul>
+                        </div>
                     </div>
-                    <button class="add-field" @click="addField">Добавить новое поле</button>
+
+                    <div class="form-group">
+                        <label>Формат мероприятия</label>
+                        <div class="format-icons">
+                            <div class="ww">
+                                <div class="format-option" :class="{ active: event.format === 'offline' }"
+                                    @click="event.format = 'offline'">
+                                    <img src="@/assets/icons/offline.png" alt="Offline" />
+                                </div>
+                                <p>Оффлайн</p>
+                            </div>
+                            <div class="ww">
+                                <div class="format-option" :class="{ active: event.format === 'online' }"
+                                    @click="event.format = 'online'">
+                                    <img src="@/assets/icons/online.png" alt="Online" />
+                                </div>
+                                <p>Онлайн</p>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <div class="group-section">
+                        <label>Объединение в группу</label>
+                        <div class="group_or_solo">
+                            <div>
+                                <select v-model="event.grouping">
+                                <option>Группы и соло</option>
+                                <option>Только соло</option>
+                                <option>Только группы</option>
+                            </select>   </div>
+                            
+
+
+                            <!-- СВИЧ ДЛЯ ПЕРЕКЛЮЧЕНИЯ МЕЖДУ ПОЛЯМИ ДЛЯ УЧАСТНИКОВ И ГРУПП -->
+                            <div class="view-switch">
+                                <input type="radio" id="participant-fields" value="participant" v-model="fieldMode" />
+                                <label for="participant-fields">
+                                    <img src="@/assets/icons/user.png" alt="User" />
+                                </label>
+                                <input type="radio" id="group-fields" value="group" v-model="fieldMode" />
+                                <label for="group-fields">
+                                    <img src="@/assets/icons/stats.png" alt="Group" />
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dynamic-fields">
+                        <h3>Собираемые Данные — {{ fieldMode === 'group' ? 'Группа' : 'Участник' }}</h3>
+
+                        <div class="field-item" v-for="(field, index) in event.fields[fieldMode]" :key="index">
+                            <input v-model="field.label" placeholder="Название поля" />
+                            <select v-model="field.type">
+                                <option value="text">Текст</option>
+                                <option value="number">Число</option>
+                                <option value="date">Дата</option>
+                                <option value="boolean">Да/Нет</option>
+                                <option value="select">Выбор</option>
+                            </select>
+
+                            <template v-if="field.type === 'select'">
+                                <input v-model="field.options" placeholder="Варианты через запятую" />
+                                <select>
+                                    <option v-for="(opt, idx) in field.options.split(',')" :key="idx">{{ opt }}</option>
+                                </select>
+                            </template>
+
+                            <template v-if="field.type === 'boolean'">
+                                <select disabled>
+                                    <option>Да</option>
+                                    <option>Нет</option>
+                                </select>
+                            </template>
+                            <template v-if="field.type === 'text'">
+                                <input disabled placeholder="Пример текста" />
+                            </template>
+                            <template v-if="field.type === 'number'">
+                                <input disabled type="number" placeholder="123" />
+                            </template>
+                            <template v-if="field.type === 'date'">
+                                <input disabled type="date" />
+                            </template>
+
+                            <input v-model="field.description" placeholder="Описание" />
+                            <button @click="removeField(index)">×</button>
+                        </div>
+
+                        <button class="add-field" @click="addField">Добавить новое поле</button>
+                    </div>
+
+                    <div class="create_event">
+                        <button class="create" @click="submitEvent">Отправить</button>
+                    </div>
                 </div>
 
-                <div class="create_event">
-                    <button class="create" @click="submitEvent">Отправить</button>
+                <div class="event-sidebar">
+                    <h4>Мои мероприятия</h4>
+                    <div class="upcoming-event" v-for="n in 2" :key="n">
+                        <p>название мероприятия</p>
+                        <p>🗓️ Дата начала: 20.03.2024</p>
+                    </div>
+                    <button class="submit-btn" @click="submitEvent">Создать мероприятие</button>
                 </div>
-            </div>
-
-            <div class="event-sidebar">
-                <h4>Мои мероприятия</h4>
-                <div class="upcoming-event" v-for="n in 2" :key="n">
-                    <p>название мероприятия</p>
-                    <p>🗓️ Дата начала: 20.03.2024</p>
-                </div>
-                <button class="submit-btn" @click="submitEvent">Создать мероприятие</button>
             </div>
         </div>
     </div>
-</div>
 </template>
 
 <script setup>
 import NavBar from '@/components/nav_bar.vue'
 import { ref } from 'vue'
 import axios from 'axios'
+import api from '@/utils/axios'
 
 const imageFile = ref(null)
 const imagePreview = ref('')
 const suggestions = ref([])
+
+const fieldMode = ref('participant') // participant или group
 
 const event = ref({
     title: '',
@@ -156,7 +174,10 @@ const event = ref({
     location: '',
     grouping: 'Группы и соло',
     format: 'offline',
-    fields: []
+    fields: {
+        participant: [],
+        group: []
+    }
 })
 
 const handleImageUpload = (e) => {
@@ -172,11 +193,11 @@ const handleImageUpload = (e) => {
 }
 
 const addField = () => {
-    event.value.fields.push({ label: '', type: 'text', options: '', description: '' })
+    event.value.fields[fieldMode.value].push({ label: '', type: 'text', options: '', description: '' })
 }
 
 const removeField = (index) => {
-    event.value.fields.splice(index, 1)
+    event.value.fields[fieldMode.value].splice(index, 1)
 }
 
 const submitEvent = () => {
@@ -209,7 +230,53 @@ const selectSuggestion = (suggestion) => {
 }
 </script>
 
+
 <style scoped>
+
+
+.group_or_solo{
+    width: 30rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.view-switch {
+    display: flex;
+    background: #333;
+    border-radius: 20px;
+    overflow: hidden;
+    width: fit-content;
+    align-items: center;
+    /* margin: 1rem auto; */
+    gap: 2px;
+    margin-left: 2rem;
+}
+
+.view-switch input[type="radio"] {
+    display: none;
+}
+
+.view-switch label {
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    background: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.view-switch input[type="radio"]:checked+label {
+    background: #150a1e;
+}
+
+.view-switch img {
+    width: 32px;
+    height: 32px;
+}
+
+
+
+
 .format-icons {
     justify-content: center;
     display: flex;
@@ -291,40 +358,41 @@ const selectSuggestion = (suggestion) => {
 }
 
 .group-section select {
-    margin-top: 1rem;
+    
+    width: 12rem;
 }
 
 
 
 .suggestions-list {
-  background: #333;
-  list-style: none;
-  padding: 0.5rem;
-  margin-top: 0.5rem;
-  border: 1px solid #555;
-  border-radius: 6px;
-  max-height: 200px;
-  overflow-y: auto;
-  position: absolute;
-  z-index: 10;
-  width: 100%;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    background: #333;
+    list-style: none;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    border: 1px solid #555;
+    border-radius: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    position: absolute;
+    z-index: 10;
+    width: 100%;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
 .suggestions-list li {
-  padding: 0.3rem 0.6rem;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .suggestions-list li:hover {
-  background: #444;
+    background: #444;
 }
 
 .location-wrapper {
-  position: relative;
+    position: relative;
 }
 
 
@@ -384,6 +452,10 @@ select {
 }
 
 .group-section {
+    
+    align-items: center;
+    display: grid ;
+    justify-content: center;
     margin: 1rem 0;
     text-align: center;
 

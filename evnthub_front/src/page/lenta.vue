@@ -16,14 +16,14 @@
 import NavBar from '@/components/nav_bar.vue'
 import EventCard from '@/components/EventCard.vue'
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/utils/axios'
 
 const events = ref([])
 
 onMounted(async() => {
   
 
-const response = await api.get('/event') // пример GET запроса
+const response = await api.get('/events') // пример GET запроса
 console.log(response.data)
 events.value = response.data
   

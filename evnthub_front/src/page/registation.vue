@@ -1,70 +1,48 @@
 <template>
   <div class="outer-conteiner">
-  <div class="auth-container">
-    <div class="auth-card">
-      <div class="top-section">
-        <img class="close_img" src="../assets/close-icon.svg" alt="Close" />
-      </div>
-      <div class="auth-content">
-        <div class="logo-section">
-          <div>
-            <img class="login-icon" src="../assets/logo.svg" alt="Logo" />
-            <router-link class="create-link vertically" to="/login">Войти в аккаунт</router-link>
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="top-section">
+          <img class="close_img" src="../assets/close-icon.svg" alt="Close" />
+        </div>
+        <div class="auth-content">
+          <div class="logo-section">
+            <div>
+              <img class="login-icon" src="../assets/logo.svg" alt="Logo" />
+              <router-link class="create-link vertically" to="/login">Войти в аккаунт</router-link>
+            </div>
+            <div>
+              <router-link class="create-link horizontally" to="/login">Войти в аккаунт</router-link>
+              <div class="login-form">
+
+                <form @submit.prevent="register" class="form">
+                  <div class="form-group">
+                    <input v-model="email" class="auth-input" type="email" placeholder="Email" aria-label="Email"
+                      required />
+                  </div>
+                  <div class="form-group">
+                    <input v-model="password" type="password" class="auth-input" placeholder="Пароль"
+                      aria-label="Пароль" required />
+                  </div>
+                  <div class="form-group">
+                    <input v-model="confirmPassword" type="password" class="auth-input" placeholder="Подтвердите пароль"
+                      aria-label="Подтвердите пароль" required />
+                  </div>
+                  <button type="submit" class="login-submit" :class="{ active: isValid, disabled: !isValid }"
+                    aria-label="Зарегистрироваться">
+                    Зарегистрироваться
+                  </button>
+                </form>
+
+              </div>
+            </div>
+
           </div>
-          <div>
-            <router-link class="create-link horizontally" to="/login">Войти в аккаунт</router-link>
-            <div class="login-form">
-          
-            <form @submit.prevent="register" class="form">
-              <div class="form-group">
-                <input
-                  v-model="email"
-                  class="auth-input"
-                  type="email"
-                  placeholder="Email"
-                  aria-label="Email"
-                  required
-                />
-              </div>
-              <div class="form-group">
-                <input
-                  v-model="password"
-                  type="password"
-                  class="auth-input"
-                  placeholder="Пароль"
-                  aria-label="Пароль"
-                  required
-                />
-              </div>
-              <div class="form-group">
-                <input
-                  v-model="confirmPassword"
-                  type="password"
-                  class="auth-input"
-                  placeholder="Подтвердите пароль"
-                  aria-label="Подтвердите пароль"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                class="login-submit"
-                :class="{ active: isValid, disabled: !isValid }"
-                aria-label="Зарегистрироваться"
-              >
-                Зарегистрироваться
-              </button>
-            </form>
 
         </div>
-          </div>
-          
-        </div>
-       
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <script setup>
@@ -86,8 +64,9 @@ const register = async () => {
     return
   }
 
+
   try {
-    const response = await api.post('/auth/login', {
+    const response = await api.post('/auth/register', {
       email: email.value,
       password: password.value
     })
@@ -96,6 +75,7 @@ const register = async () => {
     if (response.data.token) {
       document.cookie = `jwt=${response.data.token}; path=/;`
     }
+    console.log(document.cookie)
 
     // Переход после успешной регистрации
     window.location.href = '/lenta'
@@ -108,8 +88,7 @@ const register = async () => {
 
 
 <style scoped>
-
-.form-group{
+.form-group {
   padding-bottom: 8px;
 }
 
@@ -119,8 +98,10 @@ const register = async () => {
   align-items: center;
   height: 100vh;
   width: 100vw;
-  background: #150A1E; /* или твой фон */
+  background: #150A1E;
+  /* или твой фон */
 }
+
 .auth-container {
   display: flex;
   min-height: 400px;
@@ -140,7 +121,8 @@ const register = async () => {
   justify-content: end;
   align-items: top;
 }
-.close_img{
+
+.close_img {
   width: 15px;
 
 }
@@ -185,7 +167,7 @@ const register = async () => {
   max-width: 70%;
   padding: 10px 15px;
   font-size: 16px;
-  
+
   color: #dfdddd;
   background: transparent;
   border: 1px solid #555;

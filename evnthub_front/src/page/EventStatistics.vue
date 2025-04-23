@@ -1,5 +1,5 @@
 <template>
-<div class="statistics-wrapper">
+  <div class="statistics-wrapper">
     <NavBar />
     <div class="statistics-page">
       <div class="main-content">
@@ -70,7 +70,7 @@
 
       <div class="sidebar_2">
         <h4>Мои мероприятия</h4>
-        <div class="event-item" v-for="i in 3" :key="i">
+        <div class="event-item" v-for="i in 18" :key="i">
           <p>название мероприятия</p>
           <p>Дата начала: 20.03.2024</p>
         </div>
@@ -78,10 +78,10 @@
       </div>
     </div>
   </div>
-  </template>
-  
-  <script setup>
-  import NavBar from '@/components/nav_bar.vue'
+</template>
+
+<script setup>
+import NavBar from '@/components/nav_bar.vue'
 import { ref, watch, onMounted } from 'vue'
 import axios from 'axios'
 
@@ -117,10 +117,8 @@ onMounted(async () => {
   participants.value = participantsRes.data
 })
 </script>
-  
-  <style scoped>
 
-
+<style scoped>
 .chart-field-selector {
   margin: 1rem 0;
   display: flex;
@@ -140,194 +138,194 @@ onMounted(async () => {
 
 
 
-  .statistics-wrapper {
-    display: flex;
-    background: #150a1e;
-    min-height: 100vh;
-    color: white;
-  }
-  
-  .statistics-page {
-    display: flex;
-    flex-grow: 1;
-    padding: 2rem;
-  }
-  
-  .main-content {
-    flex: 2;
-    background: #444;
-    width: 40vw;
-    padding: 2rem;
-    border-radius: 10px 0 10px 10px;
-  }
-  
-  .stats-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .edit-button button {
-    background: #333;
-  }
-  
-  .imge {
-    width: 40px;
-    height: 40px;
-    margin-left: 1.5rem;
-  }
-  
-  .event-title {
-    background: #333;
-    border: 1px solid #666;
-    color: white;
-    padding: 0.5rem;
-    width: 100%;
-    margin: 1rem 0;
-    border-radius: 8px;
-  }
-  
-  .chart-section {
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-    margin-bottom: 1rem;
-  }
-  
-  .donut-chart {
-    width: 200px;
-    height: 200px;
-    background: conic-gradient(#f87171 0% 32%, #4ade80 32% 55%, #fbbf24 55% 73%, #60a5fa 73% 100%);
-    border-radius: 50%;
-    position: relative;
-  }
-  
-  .donut-center {
-    width: 90px;
-    height: 90px;
-    background: #444;
-    border-radius: 50%;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
-  
-  .legend {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    display: inline-block;
-  }
-  
-  .dot.yellow {
-    background: #fbbf24;
-  }
-  
-  .dot.green {
-    background: #4ade80;
-  }
-  
-  .dot.pink {
-    background: #f87171;
-  }
-  
-  .view-switch {
-    display: flex;
-    background: #333;
-    border-radius: 11px;
-    overflow: hidden;
-    width: fit-content;
-    margin-left: auto;
-  }
-  
-  .view-switch input[type="radio"] {
-    display: none;
-  }
-  
-  .view-switch label {
-    padding: 0.3rem 0.6rem;
-    cursor: pointer;
-    background: #333;
-  }
-  
-  .view-switch input[type="radio"]:checked + label {
-    background: #150a1e;
-  }
-  
-  .view-switch img {
-    width: 32px;
-    height: 32px;
-  }
-  
-  .participants-box {
-    margin-top: 1rem;
-    background: #333;
-    padding: 1rem;
-    border-radius: 12px;
-  }
-  
-  .participant {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin: 0.5rem 0;
-  }
-  
-  .avatar {
-    width: 24px;
-    height: 24px;
-    background: #999;
-    border-radius: 50%;
-  }
-  
-  .name,
-  .email {
-    flex: 1;
-  }
-  
-  .more-options {
-    background: transparent;
-    border: none;
-    color: white;
-    font-size: 1.5rem;
-    cursor: pointer;
-  }
-  
-  .sidebar_2 {
-    width: 300px;
-    background: #222;
-    padding: 1rem;
-    border-radius: 0 10px 10px 0;
-  }
-  
-  .event-item {
-    background: #444;
-    padding: 0.5rem;
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
-  }
-  
-  .create-btn {
-    background: linear-gradient(to right, #3b82f6, #9333ea);
-    color: white;
-    padding: 0.6rem 1.2rem;
-    border: none;
-    border-radius: 8px;
-    margin-top: 1rem;
-    cursor: pointer;
-  }
-  </style>
-  
+.statistics-wrapper {
+  display: flex;
+  background: #150a1e;
+  min-height: 100vh;
+  color: white;
+}
+
+.statistics-page {
+  display: flex;
+  flex-grow: 1;
+  padding: 2rem;
+}
+
+.main-content {
+  flex: 2;
+  background: #444;
+  width: 40vw;
+  padding: 2rem;
+  border-radius: 10px 0 10px 10px;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.edit-button button {
+  background: #333;
+}
+
+.imge {
+  width: 40px;
+  height: 40px;
+  margin-left: 1.5rem;
+}
+
+.event-title {
+  background: #333;
+  border: 1px solid #666;
+  color: white;
+  padding: 0.5rem;
+  width: 100%;
+  margin: 1rem 0;
+  border-radius: 8px;
+}
+
+.chart-section {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+
+.donut-chart {
+  width: 200px;
+  height: 200px;
+  background: conic-gradient(#f87171 0% 32%, #4ade80 32% 55%, #fbbf24 55% 73%, #60a5fa 73% 100%);
+  border-radius: 50%;
+  position: relative;
+}
+
+.donut-center {
+  width: 90px;
+  height: 90px;
+  background: #444;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot.yellow {
+  background: #fbbf24;
+}
+
+.dot.green {
+  background: #4ade80;
+}
+
+.dot.pink {
+  background: #f87171;
+}
+
+.view-switch {
+  display: flex;
+  background: #333;
+  border-radius: 11px;
+  overflow: hidden;
+  width: fit-content;
+  margin-left: auto;
+}
+
+.view-switch input[type="radio"] {
+  display: none;
+}
+
+.view-switch label {
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  background: #333;
+}
+
+.view-switch input[type="radio"]:checked+label {
+  background: #150a1e;
+}
+
+.view-switch img {
+  width: 32px;
+  height: 32px;
+}
+
+.participants-box {
+  margin-top: 1rem;
+  background: #333;
+  padding: 1rem;
+  border-radius: 12px;
+}
+
+.participant {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.avatar {
+  width: 24px;
+  height: 24px;
+  background: #999;
+  border-radius: 50%;
+}
+
+.name,
+.email {
+  flex: 1;
+}
+
+.more-options {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.sidebar_2 {
+  height: fit-content;
+  width: 300px;
+  background: #222;
+  padding: 1rem;
+  border-radius: 0 10px 10px 0;
+}
+
+.event-item {
+  background: #444;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.create-btn {
+  background: linear-gradient(to right, #3b82f6, #9333ea);
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  margin-top: 1rem;
+  cursor: pointer;
+}
+</style>

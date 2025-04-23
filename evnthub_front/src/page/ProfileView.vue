@@ -100,7 +100,7 @@
   <script setup>
 import NavBar from '@/components/nav_bar.vue'
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/utils/axios'
 
 const user = ref({
   firstName: '',
@@ -111,21 +111,53 @@ const user = ref({
   age: 0
 })
 
+
+function getUserIdFromToken() {
+  const token = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('jwt='))?.split('=')[1]
+
+  if (!token) return null
+
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    console.log(payload)
+    return payload.sub || payload.userId // зависит от твоей схемы токена
+  } catch (e) {
+    console.error('Ошибка при декодировании JWT:', e)
+    return null
+  }
+}
+
+
+
+
 const soloEvents = ref([])
 const groupEvents = ref([])
 
 onMounted(async () => {
-  // Загружаем профиль
-  const userRes = await axios.get('/api/user/profile')
-  user.value = userRes.data
+  const userId = getUserIdFromToken()
+  if (!userId) {
+    console.warn('Нет userId в токене')
+    return
+  }
 
-  // Загружаем мероприятия
-  const soloRes = await axios.get('/api/events/solo')
-  const groupRes = await axios.get('/api/events/group')
+  try {
+    const userRes = await api.get(`/users/${userId}`)
+    user.value = userRes.data
+    console.log(user)//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!удалить
+  } catch (e) {
+    console.error('Ошибка при загрузке пользователя:', e)
+  }
 
-  soloEvents.value = soloRes.data
-  groupEvents.value = groupRes.data
+  //Загрузка мероприятий
+  // const soloRes = await axios.get('/events/solo')
+  // const groupRes = await axios.get('/events/group')
+
+  // soloEvents.value = soloRes.data
+  // groupEvents.value = groupRes.data
 })
+
 </script>
 
 

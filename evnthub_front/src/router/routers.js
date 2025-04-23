@@ -6,6 +6,7 @@ import lenta from '@/page/lenta.vue'
 import user from '@/page/ProfileView.vue'
 import eventCreate from '@/page/EventCreationForm.vue'
 import stat from '@/page/EventStatistics.vue'
+import group from '@/page/TeamPage.vue'
 const routes = [
   { path: '/login', component: LoginView },
   {path: '/register', component: registation},
@@ -13,7 +14,8 @@ const routes = [
   {path: '/lenta', component: lenta},
   {path: '/user', component: user},
   {path: '/event_create' , component: eventCreate},
-  {path: '/stats' , component: stat}
+  {path: '/stats' , component: stat},
+  {path: '/team' , component: group}
   
 ]
 
