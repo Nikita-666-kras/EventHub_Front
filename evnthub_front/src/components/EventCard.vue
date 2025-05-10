@@ -15,6 +15,7 @@
     </div>
 
     <div class="body">
+      
       <div class="left">
         <img class="preview" :src="event.image" />
         <div class="info">

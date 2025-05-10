@@ -30,7 +30,7 @@
             эффективностью – всё в одном месте!
           </p>
         <div class="StartButton">
-          <button class="start-btn">Начать</button>
+          <router-link to="/login"><button class="start-btn">Начать</button></router-link>
         </div>
         </div>
         <!-- <div class="banner-image"></div> -->
@@ -41,7 +41,7 @@
         
         <div class="events-header">
             <h2>Мероприятия</h2>
-            <button class="all-events-btn">все мероприятия</button>
+            <router-link to="/login"><button class="all-events-btn">все мероприятия</button></router-link>
           
         </div>
         
@@ -96,7 +96,7 @@
               <li class="li-footer"><a href="#">Обзор</a></li>
               <li class="li-footer"><a href="#">Мероприятия</a></li>
               <li class="li-footer"><a href="#">Возможности</a></li>
-              <li class="li-footer"><a href="#">Вход</a></li>
+              <li class="li-footer"><router-link to="/login"><a href="#">Вход</a></router-link></li>
             </ul>
           </div>
           <div class="line"></div>

@@ -69,11 +69,15 @@
       </div>
 
       <div class="sidebar_2">
+        <pre>{{ createdEvents }}</pre>
         <h4>Мои мероприятия</h4>
-        <div class="event-item" v-for="i in 18" :key="i">
-          <p>название мероприятия</p>
-          <p>Дата начала: 20.03.2024</p>
+        <div class="event-item" v-for="event in createdEvents" :key="event.id" @click="selectEvent(event)"
+          :class="{ active: selectedEvent && selectedEvent.id === event.id }">
+          <p>{{ event.eventName }}</p>
+          <p>Дата начала: {{ formatDateSafe(event.startDateAndTime) }}</p>
         </div>
+
+
         <button class="create-btn">Создать мероприятие</button>
       </div>
     </div>
@@ -83,39 +87,83 @@
 <script setup>
 import NavBar from '@/components/nav_bar.vue'
 import { ref, watch, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/utils/axios'
+
+const selectEvent = async (event) => {
+  selectedEvent.value = event
+  eventTitle.value = event.eventName
+  availableFields.value = event.fields || []
+
+  try {
+    const res = await api.get(`/participants/event/${event.id}`)
+    participants.value = res.data
+  } catch (err) {
+    console.error('Ошибка при загрузке участников:', err)
+  }
+}
 
 const viewMode = ref('single')
 const selectedField = ref('')
 const availableFields = ref([])
 const eventTitle = ref('')
-
+const events = ref([])
+const selectedEvent = ref(null)
+const createdEvents = ref([])
 const participants = ref([])
 const groupedParticipants = ref([])
+const formatDateSafe = (value) => {
+  const date = new Date(value)
+  return isNaN(date) ? 'Дата недоступна' : date.toLocaleDateString()
+}
+
 
 watch(viewMode, async (val) => {
   if (val === 'group') {
-    const res = await axios.get('/api/groups')
+    const res = await api.get('/groups')
     groupedParticipants.value = res.data
   }
 })
 
 watch(selectedField, async (val) => {
   if (val) {
-    const res = await axios.get(`/api/statistics?field=${val}`)
+    const res = await api.get(`/statistics?field=${val}`)
     // Здесь ты можешь обработать данные и отрисовать график
     console.log('Статистика по полю', val, res.data)
   }
 })
 
 onMounted(async () => {
-  const eventRes = await axios.get('/api/event-info')
-  eventTitle.value = eventRes.data.title
-  availableFields.value = eventRes.data.fields
+  try {
+    const token = document.cookie.split('; ').find(t => t.startsWith('jwt='))?.split('=')[1]
+    if (!token) throw new Error('JWT не найден')
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const userId = payload.sub || payload.userId
 
-  const participantsRes = await axios.get('/api/participants')
-  participants.value = participantsRes.data
+    // ✅ Получаем мероприятия, СОЗДАННЫЕ пользователем
+    const eventsRes = await api.get(`/events/creator/${userId}`)
+    const userEvents = eventsRes.data || []
+    console.log(userEvents)
+    if (!userEvents.length) {
+      console.warn('У пользователя нет созданных мероприятий')
+      return
+    }
+
+    const selected = userEvents[0]
+    selectedEvent.value = selected
+    eventTitle.value = selected.eventName
+    availableFields.value = selected.fields || []
+
+    const participantsRes = await api.get(`/participants/event/${selected.id}`)
+    participants.value = participantsRes.data
+
+    events.value = userEvents
+    createdEvents.value = userEvents // в сайдбар тоже пойдут эти
+
+  } catch (err) {
+    console.error('Ошибка инициализации:', err)
+  }
 })
+
 </script>
 
 <style scoped>
@@ -124,6 +172,10 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+.event-item.active {
+  border: 1px solid #9333ea;
+  background: #555;
 }
 
 .chart-field-selector select {

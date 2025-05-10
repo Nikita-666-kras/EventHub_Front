@@ -3,7 +3,7 @@
     <div class="auth-container">
       <div class="auth-card">
         <div class="top-section">
-          <img class="close_img" src="../assets/close-icon.svg" alt="Close" />
+          <router-link to="/"><img class="close_img" src="../assets/close-icon.svg" alt="Close" /></router-link>
         </div>
         <div class="auth-content">
           <div class="logo-section">
@@ -48,6 +48,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import api from '@/utils/axios' // свой инстанс с baseURL и withCredentials
+
 
 const email = ref('')
 const password = ref('')

@@ -24,11 +24,24 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Дата</label>
-                            <input type="date" v-model="event.date" />
+                            <div class="time-item">
+                                <span class="time-label"> дата начала мероприятия</span>
+                                <input type="date" v-model="event.date" id="imp_date" />
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Время</label>
-                            <input type="time" v-model="event.time" />
+                            <div class="time-fields">
+                                <div class="time-item">
+                                    <span class="time-label">Начало</span>
+                                    <input type="time" v-model="event.time" />
+                                </div>
+                                <div class="time-item">
+                                    <span class="time-label">Конец</span>
+                                    <input type="time" v-model="event.endTime" />
+                                </div>
+                            </div>
+                            <p v-if="timeError" class="error-text">Время окончания должно быть позже начала</p>
                         </div>
                         <div class="form-group">
                             <label>Макс кол-во участников</label>
@@ -72,24 +85,33 @@
                         <div class="group_or_solo">
                             <div>
                                 <select v-model="event.grouping">
-                                <option>Группы и соло</option>
-                                <option>Только соло</option>
-                                <option>Только группы</option>
-                            </select>   </div>
-                            
+                                    <option>Группы и соло</option>
+                                    <option>Только соло</option>
+                                    <option>Только группы</option>
+                                </select>
+                            </div>
+
 
 
                             <!-- СВИЧ ДЛЯ ПЕРЕКЛЮЧЕНИЯ МЕЖДУ ПОЛЯМИ ДЛЯ УЧАСТНИКОВ И ГРУПП -->
-                            <div class="view-switch">
-                                <input type="radio" id="participant-fields" value="participant" v-model="fieldMode" />
-                                <label for="participant-fields">
-                                    <img src="@/assets/icons/user.png" alt="User" />
-                                </label>
-                                <input type="radio" id="group-fields" value="group" v-model="fieldMode" />
-                                <label for="group-fields">
-                                    <img src="@/assets/icons/stats.png" alt="Group" />
-                                </label>
-                            </div>
+                            <transition-group name="fade" tag="div" class="view-switch">
+                                <template v-if="visibleFieldModes.includes('participant')">
+                                    <input type="radio" id="participant-fields" value="participant" v-model="fieldMode"
+                                        key="participant" />
+                                    <label for="participant-fields" key="label-participant">
+                                        <img src="@/assets/icons/user.png" alt="User" />
+                                    </label>
+                                </template>
+                                <template v-if="visibleFieldModes.includes('group')">
+                                    <input type="radio" id="group-fields" value="group" v-model="fieldMode"
+                                        key="group" />
+                                    <label for="group-fields" key="label-group">
+                                        <img src="@/assets/icons/stats.png" alt="Group" />
+                                    </label>
+                                </template>
+                            </transition-group>
+
+
                         </div>
                     </div>
                     <div class="dynamic-fields">
@@ -136,15 +158,15 @@
                     </div>
 
                     <div class="create_event">
-                        <button class="create" @click="submitEvent">Отправить</button>
+                        <button class="create" @click="submitEvent" :disabled="timeError">Отправить</button>
                     </div>
                 </div>
 
                 <div class="event-sidebar">
                     <h4>Мои мероприятия</h4>
-                    <div class="upcoming-event" v-for="n in 2" :key="n">
-                        <p>название мероприятия</p>
-                        <p>🗓️ Дата начала: 20.03.2024</p>
+                    <div class="upcoming-event" v-for="event in upcomingEvents" :key="event.id">
+                        <p>{{ event.eventName }}</p>
+                        <p>🗓️ Дата начала: {{ formatDate(event.startDateAndTime) }}</p>
                     </div>
                     <button class="submit-btn" @click="submitEvent">Создать мероприятие</button>
                 </div>
@@ -158,12 +180,27 @@ import NavBar from '@/components/nav_bar.vue'
 import { ref } from 'vue'
 import axios from 'axios'
 import api from '@/utils/axios'
+import { onMounted } from 'vue'
+
+
+
+import { computed } from 'vue'
 
 const imageFile = ref(null)
 const imagePreview = ref('')
 const suggestions = ref([])
+const formatDate = dateStr => new Date(dateStr).toLocaleDateString()
+const fieldMode = ref('participant')
 
-const fieldMode = ref('participant') // participant или group
+
+
+
+const visibleFieldModes = computed(() => {
+    if (event.value.grouping === 'Только соло') return ['participant']
+    if (event.value.grouping === 'Только группы') return ['group']
+    return ['participant', 'group'] // Группы и соло
+})
+// participant или group
 
 const event = ref({
     title: '',
@@ -177,6 +214,33 @@ const event = ref({
     fields: {
         participant: [],
         group: []
+    }
+})
+const upcomingEvents = ref([])
+
+const getUserIdFromToken = () => {
+    const token = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('jwt='))?.split('=')[1]
+    if (!token) return null
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        return payload.sub || payload.userId
+    } catch (e) {
+        console.error('JWT decode error', e)
+        return null
+    }
+}
+
+onMounted(async () => {
+    const userId = getUserIdFromToken()
+    if (!userId) return
+
+    try {
+        const res = await api.get(`/events/creator/${userId}`)
+        upcomingEvents.value = res.data || []
+    } catch (e) {
+        console.error('Ошибка при получении событий:', e)
     }
 })
 
@@ -200,9 +264,47 @@ const removeField = (index) => {
     event.value.fields[fieldMode.value].splice(index, 1)
 }
 
-const submitEvent = () => {
-    console.log('Отправка мероприятия:', event.value)
-    // axios.post('/api/event', event.value)
+
+const timeError = computed(() => {
+    if (!event.value.time || !event.value.endTime) return false
+    console.log(event.value.endTime)
+    return event.value.endTime <= event.value.time
+    
+})
+
+
+const submitEvent = async () => {
+    console.log(event.value.endTime)
+    const userId = getUserIdFromToken()
+    if (!userId) {
+        console.warn('Пользователь не авторизован')
+        return
+    }
+
+    const now = new Date().toISOString()
+
+    const payload = {
+        eventName: event.value.title,
+        creatorId: userId,
+        description: event.value.description,
+        image: imageFile.value ? imageFile.value.name : 'string', // или загрузи на s3 и вставь ссылку
+        online: event.value.format === 'online',
+        createDate: now,
+        startDateAndTime: `${event.value.date}T${event.value.time}:00`,
+        endDateAndTime: `${event.value.date}T${event.value.endTime}:00`, // или отдельно выбери время конца
+        maxParticipantNumber: Number(event.value.maxParticipants),
+        currentParticipantQuantity: 0,
+        eventAddress: event.value.location,
+        isRecurring: false,
+        qrCode: 'string'
+    }
+
+    try {
+        const res = await api.post('/events', payload)
+        console.log('Успешно отправлено:', res.data)
+    } catch (err) {
+        console.error('Ошибка отправки:', err)
+    }
 }
 
 const handleAddressInput = async () => {
@@ -232,25 +334,25 @@ const selectSuggestion = (suggestion) => {
 
 
 <style scoped>
-
-
-.group_or_solo{
+.group_or_solo {
     width: 30rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
+
 .view-switch {
     display: flex;
     background: #333;
     border-radius: 20px;
     overflow: hidden;
-    width: fit-content;
+    width: auto;
     align-items: center;
-    /* margin: 1rem auto; */
     gap: 2px;
     margin-left: 2rem;
+    transition: width 0.5s ease;
 }
+
 
 .view-switch input[type="radio"] {
     display: none;
@@ -274,6 +376,16 @@ const selectSuggestion = (suggestion) => {
     height: 32px;
 }
 
+.fade-enter-active,
+.fade-leave-active {
+    transition: all 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+    transform: scale(0.8);
+}
 
 
 
@@ -358,7 +470,7 @@ const selectSuggestion = (suggestion) => {
 }
 
 .group-section select {
-    
+
     width: 12rem;
 }
 
@@ -452,9 +564,9 @@ select {
 }
 
 .group-section {
-    
+
     align-items: center;
-    display: grid ;
+    display: grid;
     justify-content: center;
     margin: 1rem 0;
     text-align: center;
@@ -464,7 +576,7 @@ select {
 .group-section label {
     font-size: larger;
     font-weight: bold;
-    padding-bottom: 1rem;
+    padding: 0.6rem;
 }
 
 .dynamic-fields {
@@ -546,4 +658,39 @@ select {
     border-radius: 6px;
     margin-bottom: 0.5rem;
 }
+
+.time-fields {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.time-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.time-label {
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+    color: #ccc;
+}
+.time-item.error .time-input {
+  border: 1px solid #f87171;
+  background-color: #3a1a1a;
+}
+
+.error-text {
+  margin-top: 0.5rem;
+  color: #f87171;
+  font-size: 0.85rem;
+  text-align: center;
+}
+button.create:disabled {
+  background: #555;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 </style>

@@ -10,61 +10,116 @@
                     </a>
                 </div>
 
-                <div class="team-overview">
-                    <div class="team-name">Название команды</div>
+                <div class="info_team">
+                    <div class="team-name">{{ team.name }}</div>
 
-                    <div class="event-tag">
-                        <h3>Название Мероприятия</h3>
+                    <div class="img_team">
+                        <img :src="team.image" alt="Team Image" />
+                    </div>
+
+                    <div class="event-tag" v-if="selectedEvent">
+                        <h3>{{ selectedEvent.eventName }}</h3>
                         <div class="date-ivent">
-                            <p>Дата: 20.10.2004–20.10.2004</p>
-                            <p>Время: 18:52–19:00</p>
+                            <p>Дата: {{ formatDate(selectedEvent.startDateAndTime) }} – {{ formatDate(selectedEvent.endDateAndTime) }}</p>
+                            <p>Время: {{ formatTime(selectedEvent.startDateAndTime) }} – {{ formatTime(selectedEvent.endDateAndTime) }}</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="grid-table">
-                    <div class="row" v-for="n in 2" :key="n">
-                        <div v-for="i in 3" :key="i" class="cell">название</div>
+                    <div class="row" v-for="(row, rowIndex) in team.structure" :key="rowIndex">
+                        <div v-for="(cell, cellIndex) in row" :key="cellIndex" class="cell">{{ cell }}</div>
                     </div>
                 </div>
 
-                <div class="participants">
-                    <h3>Участники</h3>
-                    <div class="participant" v-for="(user, i) in 3" :key="i">
-                        <div class="switch-nickname">
-                            <label class="switch">
-                                <input type="checkbox" checked />
-                                <span class="slider"></span>
-                            </label>
-                            <span>Nickname</span>
-                        </div>
-                        
-                        <span class="email">email@mail.com</span>
-                        <span v-if="i === 1" class="leader">Лидер</span>
-                        <button class="options">...</button>
-                        <button class="remove">✕</button>
+                <div class="participant" v-for="user in team.members" :key="user.id">
+                    <div class="switch-nickname">
+                        <label class="switch">
+                            <input type="checkbox" :checked="user.active" />
+                            <span class="slider"></span>
+                        </label>
+                        <span>{{ user.nickname }}</span>
                     </div>
-                    <div class="invite-container">
-                        <button class="invite">Пригласить Участников</button>
-                    </div>
+
+                    <span class="email">{{ user.email }}</span>
+                    <span v-if="user.isLeader" class="leader">Лидер</span>
+                    <button class="options">...</button>
+                    <button class="remove">✕</button>
                 </div>
+
             </section>
 
             <div class="sidebar_2">
                 <h4>Мои мероприятия</h4>
-                <div class="event-item" v-for="i in 3" :key="i">
-                    <p>название мероприятия</p>
-                    <p>Дата начала: 20.03.2024</p>
+                <div class="event-item" v-for="event in events" :key="event.id" @click="selectEvent(event)"
+                    :class="{ active: selectedEvent && selectedEvent.id === event.id }">
+                    <p>{{ event.eventName }}</p>
+                    <p>Дата начала: {{ formatDate(event.startDateAndTime) }}</p>
                 </div>
                 <button class="create-btn">Создать мероприятие</button>
             </div>
+
         </main>
     </div>
 </template>
 
 <script setup>
 import NavBar from '@/components/nav_bar.vue'
+import { ref, onMounted } from 'vue'
+import api from '@/utils/axios'
+
+const events = ref([])
+const selectedEvent = ref([])
+const team = ref({ name: '', image: '', members: [], structure: [] })
+
+const getUserIdFromToken = () => {
+  const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
+  if (!token) return null
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.sub || payload.userId
+  } catch (e) {
+    console.error('JWT decode error', e)
+    return null
+  }
+}
+
+onMounted(async () => {
+  const userId = getUserIdFromToken()
+  if (!userId) return
+
+  try {
+    const res = await api.get(`/events/participant/${userId}`)
+    console.log(res.data)
+    events.value = res.data
+    if (events.value.length > 0) {
+      selectedEvent.value = events.value[0]
+      await loadTeamData(selectedEvent.value.id)
+    }
+  } catch (err) {
+    console.error('Ошибка загрузки мероприятий:', err)
+  }
+})
+
+const loadTeamData = async (eventId) => {
+  try {
+    const res = await api.get(`/teams/by-event/${userId}`)
+    team.value = res.data
+  } catch (err) {
+    console.error('Ошибка загрузки команды:', err)
+  }
+}
+
+const selectEvent = async (event) => {
+  selectedEvent.value = event
+  await loadTeamData(event.id)
+}
+
+const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString()
+const formatTime = (dateStr) => new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 </script>
+
+
 
 <style scoped>
 .create-btn {
@@ -80,7 +135,7 @@ import NavBar from '@/components/nav_bar.vue'
 .team-page {
     display: flex;
     height: 100vh;
-    background: #1a0f24;
+    background: #150A1E;
     color: white;
 }
 
@@ -111,9 +166,13 @@ import NavBar from '@/components/nav_bar.vue'
     border-radius: 6px;
     margin-bottom: 0.5rem;
 }
+.info_team{
+    display: flex;
+    gap :3rem;
+}
 
 .team-details {
-
+    width: 40vw;
     background: #3f3f3f;
     border-radius: 12px;
     padding: 1.5rem;
@@ -138,35 +197,47 @@ import NavBar from '@/components/nav_bar.vue'
 }
 
 .team-overview {
-    display: grid;
-    justify-content: center;
+    display: flex;
+    justify-content: space-around;
     align-items: center;
     padding: 1rem;
-    
+
     border-radius: 10px;
+}
+
+.img_team {
+    width: 12rem;
+    height: 7rem;
+    background-color: #aaa;
 }
 
 .event-tag h3 {
     background: #2b2b2b;
     color: white;
     padding: 0.5rem 1rem;
-    border-radius:  9px 9px 0 0;
+    border-radius: 9px 9px 0 0;
 }
-.date-ivent{
-    background:#f2f2f2;
+
+.date-ivent {
+    background: #f2f2f2;
     color: rgb(0, 0, 0);
     padding: 0.5rem 1rem;
     border-radius: 0 0 9px 9px;
+}
+.event-item.active {
+  background: #555;
+  border: 1px solid #9333ea;
 }
 
 .team-name {
     font-size: 1.1rem;
     font-weight: bold;
+    text-align: center;
     padding: 0 1rem;
 }
 
 .event-tag {
-    
+
     color: black;
     border-radius: 8px;
     padding: 0.5rem 1rem;
@@ -254,7 +325,7 @@ input:checked+.slider:before {
 }
 
 .leader {
-    margin:0 1rem;
+    margin: 0 1rem;
     font-weight: bold;
     color: gold;
 }

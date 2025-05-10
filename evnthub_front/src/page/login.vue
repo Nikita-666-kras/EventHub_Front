@@ -1,56 +1,43 @@
 <template>
   <div class="outer-conteiner">
-  <div class="auth-container">
-    <div class="auth-card">
-      <div class="top-section">
-        <img class="close_img" src="../assets/close-icon.svg" alt="Close" />
-      </div>
-      <div class="auth-content">
-        <div class="logo-section">
-          <div>
-            <img class="login-icon" src="../assets/logo.svg" alt="Logo" />
-            <router-link class="create-link vertically" to="/register">Создать аккаунт</router-link>
-          </div>
-          <div>
-            <router-link class="create-link horizontally" to="/register">Создать аккаунт</router-link>
-            <div class="login-form">
-          
-          <form @submit.prevent="login" class="form">
-            <div class="form-group">
-              <input
-                v-model="email"
-                class="auth-input"
-                placeholder="Email"
-                aria-label="Email"
-              />
-            </div>
-            <div class="form-group">
-              <input
-                v-model="password"
-                type="password"
-                class="auth-input"
-                placeholder="Password"
-                aria-label="Password"
-              />
-            </div>
-            <button
-              type="submit"
-              class="login-submit"
-              :class="{ active: isValid, disabled: !isValid }"
-              aria-label="Login"
-            >
-              Войти
-            </button>
-          </form>
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="top-section">
+          <router-link to="/"><img class="close_img" src="../assets/close-icon.svg" alt="Close" /></router-link>
         </div>
+        <div class="auth-content">
+          <div class="logo-section">
+            <div>
+              <img class="login-icon" src="../assets/logo.svg" alt="Logo" />
+              <router-link class="create-link vertically" to="/register">Создать аккаунт</router-link>
+            </div>
+            <div>
+              <router-link class="create-link horizontally" to="/register">Создать аккаунт</router-link>
+              <div class="login-form">
+
+                <form @submit.prevent="login" class="form">
+                  <div class="form-group">
+                    <input v-model="email" class="auth-input" name="username" autocomplete="username"
+                      placeholder="Email" aria-label="Email" />
+                  </div>
+                  <div class="form-group">
+                    <input v-model="password" type="password" class="auth-input" placeholder="Password" name="password"
+                      autocomplete="current-password" aria-label="Password" />
+                  </div>
+                  <button type="submit" class="login-submit" :class="{ active: isValid, disabled: !isValid }"
+                    aria-label="Login">
+                    Войти
+                  </button>
+                </form>
+              </div>
+            </div>
+
           </div>
-          
+
         </div>
-       
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <script setup>
@@ -94,8 +81,7 @@ const login = async () => {
 
 
 <style scoped>
-
-.form-group{
+.form-group {
   padding-bottom: 8px;
 }
 
@@ -105,8 +91,10 @@ const login = async () => {
   align-items: center;
   height: 100vh;
   width: 100vw;
-  background:  #150A1E; /* или твой фон */
+  background: #150A1E;
+  /* или твой фон */
 }
+
 .auth-container {
   display: flex;
   min-height: 400px;
@@ -126,7 +114,8 @@ const login = async () => {
   justify-content: end;
   align-items: top;
 }
-.close_img{
+
+.close_img {
   width: 15px;
 
 }
@@ -171,7 +160,7 @@ const login = async () => {
   max-width: 70%;
   padding: 10px 15px;
   font-size: 16px;
-  
+
   color: #dfdddd;
   background: transparent;
   border: 1px solid #555;

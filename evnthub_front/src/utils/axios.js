@@ -27,12 +27,12 @@ api.interceptors.response.use(
   async err => {
     const original = err.config
 
-    if (err.response?.status === 401 && !original._retry||err.response?.status === 500 && !original._retry) { //!!!!!!!!!!!!!!!!!!!!!!!!!!!!изменить когда починим бэк на 401
+    if (err.response?.status === 401 && !original._retry) { 
       original._retry = true
 
       try {
         // Пытаемся обновить access токен
-        await axios.post('http://212.22.94.76:8081/api/auth/refresh', {}, { withCredentials: true })
+        await axios.post('http://212.22.94.76:8081/api/auth/refresh-token', {}, { withCredentials: true })
 
         // После успешного refresh — снова ставим новый токен
         setAccessToken()
