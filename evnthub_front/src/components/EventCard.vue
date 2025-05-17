@@ -14,7 +14,7 @@
       <div class="menu-icon">⋯</div>
     </div>
 
-    <div class="body">
+    <div class="body" @click="goToEventDetails">
       
       <div class="left">
         <img class="preview" :src="event.image" />
@@ -45,6 +45,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 
 const props = defineProps({
@@ -52,16 +53,21 @@ const props = defineProps({
 })
 
 const user = ref('')
+const router = useRouter()
 
 onMounted(async () => {
   try {
-    const res = await api.get(`/users/${props.event.creatorId}`) // Убедись, что endpoint верный
+    const res = await api.get(`/users/${props.event.creatorId}`)
     user.value = res.data
-    console.log(res)
   } catch (err) {
     console.error('Ошибка загрузки пользователя:', err)
   }
 })
+
+const goToEventDetails = () => {
+  router.push(`/event/${props.event.id}`)
+}
+
 </script>
 
 
@@ -136,7 +142,14 @@ onMounted(async () => {
   border-radius: 30px;
   margin-top: 1rem;
   margin-bottom: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
+
+.body:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 
 .date {
   display: flex;

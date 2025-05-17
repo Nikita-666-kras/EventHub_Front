@@ -69,15 +69,14 @@
       </div>
 
       <div class="sidebar_2">
-        <pre>{{ createdEvents }}</pre>
-        <h4>Мои мероприятия</h4>
-        <div class="event-item" v-for="event in createdEvents" :key="event.id" @click="selectEvent(event)"
-          :class="{ active: selectedEvent && selectedEvent.id === event.id }">
-          <p>{{ event.eventName }}</p>
-          <p>Дата начала: {{ formatDateSafe(event.startDateAndTime) }}</p>
+        <div class="sidebar_2_scroll">
+          <h4 class="tile_sidebar">Мои мероприятия</h4>
+          <div class="event-item" v-for="event in userEvents" :key="event.id" @click="selectEvent(event)"
+            :class="{ active: selectedEvent && selectedEvent.id === event.id }">
+            <p>{{ event.eventName }}</p>
+            <p>Дата начала: {{ formatDateSafe(event.startDateAndTime) }}</p>
+          </div>
         </div>
-
-
         <button class="create-btn">Создать мероприятие</button>
       </div>
     </div>
@@ -95,12 +94,30 @@ const selectEvent = async (event) => {
   availableFields.value = event.fields || []
 
   try {
-    const res = await api.get(`/participants/event/${event.id}`)
-    participants.value = res.data
+    const res = await api.get(`/participants/${event.id}`)
+    const rawParticipants = res.data || []
+
+    // Получаем данные о пользователях по userId
+    const detailed = await Promise.all(
+      rawParticipants.map(async (p) => {
+        try {
+          const userRes = await api.get(`/users/${p.userId}`)
+          return {
+            name: userRes.data.name || 'Без имени',
+            email: userRes.data.email || 'Нет email'
+          }
+        } catch {
+          return { name: 'Ошибка', email: 'Ошибка' }
+        }
+      })
+    )
+
+    participants.value = detailed
   } catch (err) {
     console.error('Ошибка при загрузке участников:', err)
   }
 }
+
 
 const viewMode = ref('single')
 const selectedField = ref('')
@@ -111,6 +128,9 @@ const selectedEvent = ref(null)
 const createdEvents = ref([])
 const participants = ref([])
 const groupedParticipants = ref([])
+
+
+const userEvents = ref([])
 const formatDateSafe = (value) => {
   const date = new Date(value)
   return isNaN(date) ? 'Дата недоступна' : date.toLocaleDateString()
@@ -118,9 +138,14 @@ const formatDateSafe = (value) => {
 
 
 watch(viewMode, async (val) => {
-  if (val === 'group') {
-    const res = await api.get('/groups')
-    groupedParticipants.value = res.data
+  if (val === 'group' && selectedEvent.value) {
+    try {
+      const res = await api.get(`/teams/${selectedEvent.value.id}`)
+      groupedParticipants.value = res.data
+      console.log(groupedParticipants)
+    } catch (err) {
+      console.error('Ошибка при загрузке команд:', err)
+    }
   }
 })
 
@@ -132,17 +157,28 @@ watch(selectedField, async (val) => {
   }
 })
 
-onMounted(async () => {
+const getUserIdFromToken = () => {
+  const token = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('jwt='))?.split('=')[1]
+  if (!token) return null
   try {
-    const token = document.cookie.split('; ').find(t => t.startsWith('jwt='))?.split('=')[1]
-    if (!token) throw new Error('JWT не найден')
     const payload = JSON.parse(atob(token.split('.')[1]))
-    const userId = payload.sub || payload.userId
+    return payload.sub || payload.userId
+  } catch (e) {
+    console.error('JWT decode error', e)
+    return null
+  }
+}
 
+onMounted(async () => {
+  const userId = getUserIdFromToken()
+  if (!userId) return
+  try {
     // ✅ Получаем мероприятия, СОЗДАННЫЕ пользователем
     const eventsRes = await api.get(`/events/creator/${userId}`)
-    const userEvents = eventsRes.data || []
-    console.log(userEvents)
+    userEvents.value = eventsRes.data || []
+    console.log("USEREVENTS", userEvents)
     if (!userEvents.length) {
       console.warn('У пользователя нет созданных мероприятий')
       return
@@ -153,11 +189,6 @@ onMounted(async () => {
     eventTitle.value = selected.eventName
     availableFields.value = selected.fields || []
 
-    const participantsRes = await api.get(`/participants/event/${selected.id}`)
-    participants.value = participantsRes.data
-
-    events.value = userEvents
-    createdEvents.value = userEvents // в сайдбар тоже пойдут эти
 
   } catch (err) {
     console.error('Ошибка инициализации:', err)
@@ -173,6 +204,7 @@ onMounted(async () => {
   flex-direction: column;
   gap: 0.5rem;
 }
+
 .event-item.active {
   border: 1px solid #9333ea;
   background: #555;
@@ -316,6 +348,43 @@ onMounted(async () => {
 .view-switch input[type="radio"]:checked+label {
   background: #150a1e;
 }
+
+
+
+.sidebar_2 {
+  width: 300px;
+  background: #222;
+  border-radius: 0 10px 10px 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 100vh;
+}
+
+.sidebar_2_scroll {
+  flex-grow: 1;
+  overflow-y: auto;
+  text-align: center;
+  padding:0 1rem 1rem  1rem ;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar_2_scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.tile_sidebar {
+  position: sticky;
+  top: 0;
+  background: #222;
+  padding: 0.8rem;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.1rem;
+  z-index: 10;
+  border-bottom: 1px solid #444;
+}
+
 
 .view-switch img {
   width: 32px;

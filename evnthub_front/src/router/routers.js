@@ -15,7 +15,12 @@ const routes = [
   {path: '/user', component: user},
   {path: '/event_create' , component: eventCreate},
   {path: '/stats' , component: stat},
-  {path: '/team' , component: group}
+  {path: '/team' , component: group},
+  {
+    path: '/event/:id',
+    name: 'EventDetail',
+    component: () => import('@/page/EventDetail.vue')
+  }
   
 ]
 

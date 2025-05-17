@@ -20,8 +20,10 @@
                     <div class="event-tag" v-if="selectedEvent">
                         <h3>{{ selectedEvent.eventName }}</h3>
                         <div class="date-ivent">
-                            <p>Дата: {{ formatDate(selectedEvent.startDateAndTime) }} – {{ formatDate(selectedEvent.endDateAndTime) }}</p>
-                            <p>Время: {{ formatTime(selectedEvent.startDateAndTime) }} – {{ formatTime(selectedEvent.endDateAndTime) }}</p>
+                            <p>Дата: {{ formatDate(selectedEvent.startDateAndTime) }} – {{
+                                formatDate(selectedEvent.endDateAndTime) }}</p>
+                            <p>Время: {{ formatTime(selectedEvent.startDateAndTime) }} – {{
+                                formatTime(selectedEvent.endDateAndTime) }}</p>
                         </div>
                     </div>
                 </div>
@@ -50,11 +52,14 @@
             </section>
 
             <div class="sidebar_2">
-                <h4>Мои мероприятия</h4>
-                <div class="event-item" v-for="event in events" :key="event.id" @click="selectEvent(event)"
-                    :class="{ active: selectedEvent && selectedEvent.id === event.id }">
-                    <p>{{ event.eventName }}</p>
-                    <p>Дата начала: {{ formatDate(event.startDateAndTime) }}</p>
+
+                <h4 class="tile_sidebar">Мои команды</h4>
+                <div class="sidebar_2_scroll">
+                    <div class="event-item" v-for="event in events" :key="event.id" @click="selectEvent(event)"
+                        :class="{ active: selectedEvent && selectedEvent.id === event.id }">
+                        <p>{{ event.eventName }}</p>
+                        <p>Дата начала: {{ formatDate(event.startDateAndTime) }}</p>
+                    </div>
                 </div>
                 <button class="create-btn">Создать мероприятие</button>
             </div>
@@ -73,46 +78,46 @@ const selectedEvent = ref([])
 const team = ref({ name: '', image: '', members: [], structure: [] })
 
 const getUserIdFromToken = () => {
-  const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
-  if (!token) return null
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    return payload.sub || payload.userId
-  } catch (e) {
-    console.error('JWT decode error', e)
-    return null
-  }
+    const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
+    if (!token) return null
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        return payload.sub || payload.userId
+    } catch (e) {
+        console.error('JWT decode error', e)
+        return null
+    }
 }
 
 onMounted(async () => {
-  const userId = getUserIdFromToken()
-  if (!userId) return
+    const userId = getUserIdFromToken()
+    if (!userId) return
 
-  try {
-    const res = await api.get(`/events/participant/${userId}`)
-    console.log(res.data)
-    events.value = res.data
-    if (events.value.length > 0) {
-      selectedEvent.value = events.value[0]
-      await loadTeamData(selectedEvent.value.id)
+    try {
+        const res = await api.get(`/teams/${userId}`)
+        console.log(res.data)
+        events.value = res.data
+        if (events.value.length > 0) {
+            selectedEvent.value = events.value[0]
+            await loadTeamData(selectedEvent.value.id)
+        }
+    } catch (err) {
+        console.error('Ошибка загрузки мероприятий:', err)
     }
-  } catch (err) {
-    console.error('Ошибка загрузки мероприятий:', err)
-  }
 })
 
 const loadTeamData = async (eventId) => {
-  try {
-    const res = await api.get(`/teams/by-event/${userId}`)
-    team.value = res.data
-  } catch (err) {
-    console.error('Ошибка загрузки команды:', err)
-  }
+    try {
+        const res = await api.get(`/teams/by-event/${userId}`)
+        team.value = res.data
+    } catch (err) {
+        console.error('Ошибка загрузки команды:', err)
+    }
 }
 
 const selectEvent = async (event) => {
-  selectedEvent.value = event
-  await loadTeamData(event.id)
+    selectedEvent.value = event
+    await loadTeamData(event.id)
 }
 
 const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString()
@@ -150,6 +155,19 @@ const formatTime = (dateStr) => new Date(dateStr).toLocaleTimeString([], { hour:
     margin-bottom: 1rem;
 }
 
+.sidebar_2_scroll {
+  flex-grow: 1;
+  overflow-y: auto;
+  text-align: center;
+  padding:0 1rem 1rem  1rem ;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar_2_scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .sidebar_2 {
 
     height: fit-content;
@@ -166,15 +184,36 @@ const formatTime = (dateStr) => new Date(dateStr).toLocaleTimeString([], { hour:
     border-radius: 6px;
     margin-bottom: 0.5rem;
 }
-.info_team{
+
+.info_team {
     display: flex;
-    gap :3rem;
+    gap: 3rem;
 }
+
+
+
+
+.tile_sidebar {
+    position: sticky;
+    top: 0;
+    background: #222;
+    padding: 0.8rem;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    z-index: 10;
+    border-bottom: 1px solid #444;
+}
+
+
+
+
 
 .team-details {
     width: 40vw;
     background: #3f3f3f;
-    border-radius: 12px;
+    border-radius: 12px 0 12px 12px;
+    ;
     padding: 1.5rem;
     flex: 3;
     display: flex;
@@ -224,9 +263,10 @@ const formatTime = (dateStr) => new Date(dateStr).toLocaleTimeString([], { hour:
     padding: 0.5rem 1rem;
     border-radius: 0 0 9px 9px;
 }
+
 .event-item.active {
-  background: #555;
-  border: 1px solid #9333ea;
+    background: #555;
+    border: 1px solid #9333ea;
 }
 
 .team-name {

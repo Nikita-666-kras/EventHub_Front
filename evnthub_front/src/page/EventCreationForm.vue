@@ -163,10 +163,12 @@
                 </div>
 
                 <div class="event-sidebar">
-                    <h4>Мои мероприятия</h4>
-                    <div class="upcoming-event" v-for="event in upcomingEvents" :key="event.id">
-                        <p>{{ event.eventName }}</p>
-                        <p>🗓️ Дата начала: {{ formatDate(event.startDateAndTime) }}</p>
+                    <h4 class="tile_sidebar">Мои мероприятия</h4>
+                    <div class="event-sidebar-scroll">
+                        <div class="upcoming-event" v-for="event in upcomingEvents" :key="event.id">
+                            <p class="side_name">{{ event.eventName }}</p>
+                            <p class="side_name"> Дата начала: {{ formatDate(event.startDateAndTime) }}</p>
+                        </div>
                     </div>
                     <button class="submit-btn" @click="submitEvent">Создать мероприятие</button>
                 </div>
@@ -190,7 +192,7 @@ const imageFile = ref(null)
 const imagePreview = ref('')
 const suggestions = ref([])
 const formatDate = dateStr => new Date(dateStr).toLocaleDateString()
-const fieldMode = ref('participant')
+const fieldMode = ref('participant')// participant или group
 
 
 
@@ -200,7 +202,7 @@ const visibleFieldModes = computed(() => {
     if (event.value.grouping === 'Только группы') return ['group']
     return ['participant', 'group'] // Группы и соло
 })
-// participant или group
+
 
 const event = ref({
     title: '',
@@ -273,39 +275,67 @@ const timeError = computed(() => {
 })
 
 
-const submitEvent = async () => {
-    console.log(event.value.endTime)
-    const userId = getUserIdFromToken()
-    if (!userId) {
-        console.warn('Пользователь не авторизован')
-        return
-    }
-
-    const now = new Date().toISOString()
-
-    const payload = {
-        eventName: event.value.title,
-        creatorId: userId,
-        description: event.value.description,
-        image: imageFile.value ? imageFile.value.name : 'string', // или загрузи на s3 и вставь ссылку
-        online: event.value.format === 'online',
-        createDate: now,
-        startDateAndTime: `${event.value.date}T${event.value.time}:00`,
-        endDateAndTime: `${event.value.date}T${event.value.endTime}:00`, // или отдельно выбери время конца
-        maxParticipantNumber: Number(event.value.maxParticipants),
-        currentParticipantQuantity: 0,
-        eventAddress: event.value.location,
-        isRecurring: false,
-        qrCode: 'string'
-    }
-
-    try {
-        const res = await api.post('/events', payload)
-        console.log('Успешно отправлено:', res.data)
-    } catch (err) {
-        console.error('Ошибка отправки:', err)
-    }
+const prepareCustomFields = () => {
+  const participantFields = event.value.fields.participant.map(f => ({
+    name: f.label,
+    type: f.type,
+    require: true // или добавить отдельный флаг, если он есть
+  }))
+//   const groupFields = event.value.fields.group.map(f => ({
+//     name: f.label,
+//     type: f.type,
+//     require: true
+//   }))
+  return [...participantFields ]//...groupFields
 }
+
+
+
+const submitEvent = async () => {
+    
+  const userId = getUserIdFromToken()
+  if (!userId) {
+    console.error('JWT не найден или недействителен')
+    return
+  }
+
+  const createDate = new Date()
+  const startDateTime = new Date(`${event.value.date}T${event.value.time}`)
+  const endDateTime = new Date(`${event.value.date}T${event.value.endTime}`)
+
+  const payload = {
+    eventName: event.value.title,
+    creatorId: userId,
+    description: event.value.description,
+    image: imagePreview.value || '',
+    online: event.value.format === 'online',
+    createDate: createDate.toISOString().replace('Z', ''),
+    startDateAndTime: startDateTime.toISOString().replace('Z', ''),
+    endDateAndTime: endDateTime.toISOString().replace('Z', ''),
+    maxParticipantNumber: Number(event.value.maxParticipants),
+    currentParticipantQuantity: 0,
+    eventAddress: event.value.location,
+    isRecurring: false,
+    qrCode: ''
+  }
+
+  try {
+    const res = await api.post('/event', payload)
+    const eventId = res.data.id
+    console.log('Мероприятие создано', res.data)
+
+    const customFieldsPayload = {
+      event_id: eventId,
+      fields: prepareCustomFields()
+    }
+    console.log(eventId, customFieldsPayload)
+    await api.post('/responses/custom-fields', customFieldsPayload)
+    console.log('Кастомные поля успешно добавлены')
+  } catch (err) {
+    console.error('Ошибка отправки:', err)
+  }
+}
+
 
 const handleAddressInput = async () => {
     if (!event.value.location) return
@@ -474,7 +504,9 @@ const selectSuggestion = (suggestion) => {
     width: 12rem;
 }
 
-
+.side_name{
+    text-align: center;
+}
 
 .suggestions-list {
     background: #333;
@@ -511,12 +543,57 @@ const selectSuggestion = (suggestion) => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+.event-sidebar {
+    background: #222;
+    border-radius: 0 10px 10px 0;
+    width: 300px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 100vh;
+}
+
+.event-sidebar-scroll {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.event-sidebar-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+
+
 .event-sidebar {
     background: #222;
     border-radius: 0 10px 10px 0;
     padding: 1rem;
     width: 300px;
     height: fit-content;
+}
+
+.event-sidebar {
+    background: #222;
+    border-radius: 0 10px 10px 0;
+    width: 300px;
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 100vh;
 }
 
 .event-title,
@@ -616,6 +693,21 @@ select {
 }
 
 
+
+.tile_sidebar {
+  position: sticky;
+  top: 0;
+  background: #222;
+  padding: 0.8rem;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.1rem;
+  z-index: 10;
+  border-bottom: 1px solid #222;
+}
+
+
+
 .field-item {
     display: flex;
     gap: 0.5rem;
@@ -692,5 +784,8 @@ button.create:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+
+
 
 </style>
