@@ -73,126 +73,159 @@ const goToEventDetails = () => {
 
 <style scoped>
 .event-card {
-  background: linear-gradient(180deg, #245dff, #ae38b9);
-  border-radius: 16px;
-
-  padding: 1rem;
-  color: white;
-  margin-bottom: 2rem;
+    background: linear-gradient(180deg, #245dff, #ae38b9);
+    border-radius: 16px;
+    padding: 1rem;
+    color: white;
+    margin-bottom: 2rem;
 }
 
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .title_event {
-  width: 27rem;
-  text-align: center;
-  font-size: large;
-
+    width: 27rem;
+    text-align: center;
+    font-size: large;
 }
 
 .avatar {
-  width: 50px;
-  height: 50px;
-  margin-left: 0.5rem;
-  border-radius: 28%;
+    width: 50px;
+    height: 50px;
+    margin-left: 0.5rem;
+    border-radius: 28%;
 }
 
 .location {
-  display: flex;
-
+    display: flex;
 }
 
 .location img {
-  width: 30px;
-  height: 30px;
-  margin-right: 1rem;
+    width: 30px;
+    height: 30px;
+    margin-right: 1rem;
 }
 
 .user-info {
-  display: flex;
-  align-items: center;
-  background: #eee;
-  border-radius: 20px;
-  color: black;
-  border: 0.5rem;
-  flex: 1;
-  margin-left: 1rem;
+    display: flex;
+    align-items: center;
+    background: #eee;
+    border-radius: 20px;
+    color: black;
+    border: 0.5rem;
+    flex: 1;
+    margin-left: 1rem;
 }
 
 .nickname {
-  font-weight: bold;
-  margin: 0 2rem;
+    font-weight: bold;
+    margin: 0 2rem;
 }
 
 .menu-icon {
-  margin-left: 12rem;
-  font-size: 1.5rem;
-  cursor: pointer;
+    margin-left: 12rem;
+    font-size: 1.5rem;
+    cursor: pointer;
 }
 
 .body {
-  display: flex;
-  padding: 12px;
-  gap: 1rem;
-  border: 0.1rem solid #eee;
-  border-radius: 30px;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-  cursor: pointer;
-  transition: background 0.2s ease;
+    display: flex;
+    padding: 12px;
+    gap: 1rem;
+    border: 0.1rem solid #eee;
+    border-radius: 30px;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
 }
 
 .body:hover {
-  background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
 }
 
-
 .date {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
 }
 
 .date img {
-  width: 30px;
-  height: 30px;
-  margin-right: 1rem;
+    width: 30px;
+    height: 30px;
+    margin-right: 1rem;
 }
 
 .left {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .preview {
-  width: 400px;
-  height: 235px;
-  background: gray;
-  border-radius: 8px;
-  object-fit: cover;
-
+    width: 400px;
+    height: 235px;
+    background: gray;
+    border-radius: 8px;
+    object-fit: cover;
 }
 
 .info {
-
-  margin: 0.5rem 0 0.5rem 0.8rem;
+    margin: 0.5rem 0 0.5rem 0.8rem;
 }
 
 .info p {
-  margin: 0.7rem 0;
-  font-size: 0.9rem;
+    margin: 0.7rem 0;
+    font-size: 0.9rem;
 }
 
 .right {
-  flex: 1;
-  background: #eee;
-  color: black;
-  padding: 1rem;
-  border-radius: 12px;
-  font-size: 0.9rem;
+    flex: 1;
+    background: #eee;
+    color: black;
+    padding: 1rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+}
+
+.description {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #ccc;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.event-card {
+    animation: fadeIn 0.5s ease-out;
+}
+
+@media (max-width: 768px) {
+    .event-card {
+        margin: 1rem;
+    }
+    
+    .body {
+        flex-direction: column;
+    }
+    
+    .preview {
+        height: 200px;
+    }
+    
+    .right {
+        padding: 1rem;
+    }
 }
 </style>

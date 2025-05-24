@@ -22,7 +22,7 @@ a,
 
 @media (hover: hover) {
   a:hover {
-    background-color: #575757;
+    /* background-color: #575757; */
     
   }
 }

@@ -1,9 +1,11 @@
 <template>
-  <div>
+  <div class="lenta-page fade-in">
     <NavBar />
 
     <div class="main-wrapper">
-      <EventCard v-for="event in events" :key="event.id" :event="event" />
+      <div class="events-container">
+        <EventCard v-for="event in events" :key="event.id" :event="event" class="event-card" />
+      </div>
 
       <div v-if="loading" class="loader-container">
         <div class="loader"></div>
@@ -34,22 +36,28 @@ const fetchEvents = async () => {
       ? `/events/page?cursor=${encodeURIComponent(cursor)}&limit=${limit}&sortBy=create_date`
       : `/events/page?limit=${limit}&sortBy=start_date_and_time`
 
-    
+    console.log('Fetching events from URL:', url)
     const response = await api.get(url)
-    
+    console.log('Response data:', response.data)
 
     const newEvents = response.data || []
-    console.log(newEvents)
-    if (newEvents.length < limit) hasMore.value = false
+    console.log('New events:', newEvents)
+
+    if (newEvents.length < limit) {
+      console.log('No more events available')
+      hasMore.value = false
+    }
+
     if (newEvents.length > 0) {
       cursor = newEvents[newEvents.length - 1].createDate
-      
+      console.log('New cursor:', cursor)
       events.value.push(...newEvents)
+      console.log('Total events:', events.value.length)
     }
   } catch (err) {
     console.error('[❌] Ошибка загрузки событий:', err)
-    if (err?.response?.status === 400) {// спросить норм это или нет
-      
+    if (err?.response?.status === 400) {
+      console.log('Received 400 status, marking as no more events')
       hasMore.value = false
     }
   } finally {
@@ -68,7 +76,7 @@ const handleScroll = () => {
       fetchEvents()
     }
     throttle = false
-  }, 200) 
+  }, 200)
 }
 
 onMounted(() => {
@@ -87,20 +95,66 @@ onUnmounted(() => {
   padding: 2rem;
   min-height: 100vh;
   background: #150A1E;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.events-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.event-card {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: slideUp 0.5s ease-out forwards;
+  transition: all 0.3s ease;
+}
+
+.event-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.event-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.event-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.event-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.event-card:nth-child(4) {
+  animation-delay: 0.4s;
+}
+
+.event-card:nth-child(5) {
+  animation-delay: 0.5s;
 }
 
 .loader-container {
   display: flex;
   justify-content: center;
   padding: 2rem;
+  animation: fadeIn 0.3s ease-out;
 }
+
 .no-more-events {
   color: #aaa;
   text-align: center;
   margin-top: 2rem;
   font-style: italic;
+  animation: fadeIn 0.5s ease-out;
+  transition: color 0.3s ease;
 }
 
+.no-more-events:hover {
+  color: #9333ea;
+}
 
 .loader {
   width: 40px;
@@ -114,6 +168,42 @@ onUnmounted(() => {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
 </style>

@@ -1,27 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoginView from '@/page/login.vue' // Проверь путь, он должен быть правильным
-import registation from '@/page/registation.vue'
-import main from '@/page/main_page.vue'
-import lenta from '@/page/lenta.vue'
-import user from '@/page/ProfileView.vue'
-import eventCreate from '@/page/EventCreationForm.vue'
-import stat from '@/page/EventStatistics.vue'
-import group from '@/page/TeamPage.vue'
+// import group from '@/page/TeamPage.vue'
 const routes = [
-  { path: '/login', component: LoginView },
-  {path: '/register', component: registation},
-  {path: '/', component: main},
-  {path: '/lenta', component: lenta},
-  {path: '/user', component: user},
-  {path: '/event_create' , component: eventCreate},
-  {path: '/stats' , component: stat},
-  {path: '/team' , component: group},
+  { path: '/login', component: () => import('@/page/login.vue') },
+  { path: '/register', component: () => import('@/page/registation.vue') },
+  { path: '/', component: () => import('@/page/main_page.vue') },
+  { path: '/lenta', component: () => import('@/page/lenta.vue') },
+  { path: '/user', component: () => import('@/page/ProfileView.vue') },
+  { path: '/event_create', component: () => import('@/page/EventCreationForm.vue') },
+  { path: '/stats', component: () => import('@/page/EventStatistics.vue') },
+  { path: '/team', component: () => import('@/page/TeamPage.vue') },
   {
     path: '/event/:id',
     name: 'EventDetail',
     component: () => import('@/page/EventDetail.vue')
   }
-  
 ]
 
 const router = createRouter({

@@ -218,55 +218,76 @@ onMounted(async () => {
   border: 1px solid #555;
 }
 
-
-
-
-
 .statistics-wrapper {
   display: flex;
   background: #150a1e;
   min-height: 100vh;
   color: white;
+
+  padding: 2rem 0;
+  /* justify-content: center; */
 }
 
 .statistics-page {
   display: flex;
-  flex-grow: 1;
-  padding: 2rem;
+  width: 80%;
+  max-width: 1224px;
+  /* margin: 0 auto; */
+  gap: 0;
 }
 
 .main-content {
-  flex: 2;
   background: #444;
-  width: 40vw;
-  padding: 2rem;
-  border-radius: 10px 0 10px 10px;
+  border-radius: 16px 0 0 16px;
+  padding: 2.5rem;
+
+  min-width: 45rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border: 1px solid #333;
+  animation: fadeIn 0.5s ease-out;
 }
 
 .stats-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  animation: fadeIn 0.8s ease-out;
 }
 
 .edit-button button {
   background: #333;
+  transition: transform 0.3s ease;
+}
+
+.edit-button button:hover {
+  transform: scale(1.1);
 }
 
 .imge {
   width: 40px;
   height: 40px;
   margin-left: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+.imge:hover {
+  transform: scale(1.1);
 }
 
 .event-title {
-  background: #333;
-  border: 1px solid #666;
+  background: #2a2a2a;
+  border: 1px solid #333;
   color: white;
-  padding: 0.5rem;
+  padding: 0.8rem 1rem;
   width: 100%;
   margin: 1rem 0;
   border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.event-title:hover {
+  border-color: #9333ea;
+  box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
 }
 
 .chart-section {
@@ -274,6 +295,7 @@ onMounted(async () => {
   align-items: center;
   gap: 2rem;
   margin-bottom: 1rem;
+  animation: fadeIn 1.2s ease-out;
 }
 
 .donut-chart {
@@ -282,6 +304,11 @@ onMounted(async () => {
   background: conic-gradient(#f87171 0% 32%, #4ade80 32% 55%, #fbbf24 55% 73%, #60a5fa 73% 100%);
   border-radius: 50%;
   position: relative;
+  transition: transform 0.3s ease;
+}
+
+.donut-chart:hover {
+  transform: scale(1.05);
 }
 
 .donut-center {
@@ -305,6 +332,11 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  transition: transform 0.3s ease;
+}
+
+.legend-item:hover {
+  transform: translateX(5px);
 }
 
 .dot {
@@ -312,6 +344,11 @@ onMounted(async () => {
   height: 14px;
   border-radius: 50%;
   display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.legend-item:hover .dot {
+  transform: scale(1.2);
 }
 
 .dot.yellow {
@@ -333,6 +370,7 @@ onMounted(async () => {
   overflow: hidden;
   width: fit-content;
   margin-left: auto;
+  animation: fadeIn 1.4s ease-out;
 }
 
 .view-switch input[type="radio"] {
@@ -343,34 +381,38 @@ onMounted(async () => {
   padding: 0.3rem 0.6rem;
   cursor: pointer;
   background: #333;
+  transition: all 0.3s ease;
+}
+
+.view-switch label:hover {
+  background: #444;
 }
 
 .view-switch input[type="radio"]:checked+label {
   background: #150a1e;
 }
 
-
-
 .sidebar_2 {
-  width: 300px;
   background: #222;
-  border-radius: 0 10px 10px 0;
-  display: flex;
-  flex-direction: column;
-  max-height: 100vh;
+  border-radius: 0 16px 16px 0;
+  padding: 1.5rem;
+  color: white;
+  height: fit-content;
+  width: 30%;
+  min-width: 300px;
+  max-width: 300px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border: 1px solid #333;
+  animation: slideIn 0.5s ease-out;
 }
 
 .sidebar_2_scroll {
   flex-grow: 1;
   overflow-y: auto;
   text-align: center;
-  padding:0 1rem 1rem  1rem ;
+  padding: 0 1rem 1rem 1rem;
   scrollbar-width: none;
   -ms-overflow-style: none;
-}
-
-.sidebar_2_scroll::-webkit-scrollbar {
-  display: none;
 }
 
 .tile_sidebar {
@@ -383,19 +425,26 @@ onMounted(async () => {
   font-size: 1.1rem;
   z-index: 10;
   border-bottom: 1px solid #444;
+  animation: fadeIn 0.8s ease-out;
 }
-
 
 .view-switch img {
   width: 32px;
   height: 32px;
+  transition: transform 0.3s ease;
+}
+
+.view-switch label:hover img {
+  transform: scale(1.1);
 }
 
 .participants-box {
-  margin-top: 1rem;
-  background: #333;
-  padding: 1rem;
+  background: #2a2a2a;
   border-radius: 12px;
+  padding: 1.2rem;
+  margin-top: 1rem;
+  border: 1px solid #333;
+  animation: fadeIn 1.6s ease-out;
 }
 
 .participant {
@@ -403,6 +452,16 @@ onMounted(async () => {
   align-items: center;
   gap: 1rem;
   margin: 0.5rem 0;
+  padding: 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border: 1px solid #333;
+}
+
+.participant:hover {
+  transform: translateY(-3px);
+  border-color: #9333ea;
+  box-shadow: 0 4px 20px rgba(147, 51, 234, 0.2);
 }
 
 .avatar {
@@ -410,11 +469,21 @@ onMounted(async () => {
   height: 24px;
   background: #999;
   border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.participant:hover .avatar {
+  transform: scale(1.2);
 }
 
 .name,
 .email {
   flex: 1;
+  transition: color 0.3s ease;
+}
+
+.participant:hover .name {
+  color: #9333ea;
 }
 
 .more-options {
@@ -423,21 +492,32 @@ onMounted(async () => {
   color: white;
   font-size: 1.5rem;
   cursor: pointer;
+  transition: transform 0.3s ease;
 }
 
-.sidebar_2 {
-  height: fit-content;
-  width: 300px;
-  background: #222;
-  padding: 1rem;
-  border-radius: 0 10px 10px 0;
+.more-options:hover {
+  transform: scale(1.2);
 }
 
 .event-item {
-  background: #444;
-  padding: 0.5rem;
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
+  background: #2a2a2a;
+  padding: 1.2rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+  border: 1px solid #333;
+}
+
+.event-item:hover {
+  transform: translateY(-3px);
+  border-color: #9333ea;
+  box-shadow: 0 4px 20px rgba(147, 51, 234, 0.2);
+}
+
+.event-item.active {
+  border: 1px solid #9333ea;
+  background: #555;
+  animation: pulse 2s infinite;
 }
 
 .create-btn {
@@ -448,5 +528,49 @@ onMounted(async () => {
   border-radius: 8px;
   margin-top: 1rem;
   cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.create-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(147, 51, 234, 0.4);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(147, 51, 234, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0);
+  }
 }
 </style>
