@@ -32,7 +32,7 @@ api.interceptors.response.use(
 
       try {
         // Пытаемся обновить access токен
-        await axios.post('http://212.22.94.76:8081/api/auth/refresh-token', {}, { withCredentials: true })
+        await axios.post('https://api.event-hub.space/api/auth/refresh-token', {}, { withCredentials: true })
 
         // После успешного refresh — снова ставим новый токен
         setAccessToken()
