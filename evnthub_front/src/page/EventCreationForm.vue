@@ -16,14 +16,8 @@
                         </div>
 
                         <div class="heade-title">
-                            <input class="event-title" v-if="isEditing" v-model="editedEvent.title"
-                                placeholder="Название Мероприятия" />
-                            <input class="event-title" v-else :value="event.title" readonly
-                                placeholder="Название Мероприятия" />
-                            <textarea class="event-description" v-if="isEditing" v-model="editedEvent.description"
-                                placeholder="Описание" />
-                            <textarea class="event-description" v-else :value="event.description" readonly
-                                placeholder="Описание" />
+                            <input class="event-title" v-model="event.title" placeholder="Название Мероприятия" />
+                            <textarea class="event-description" v-model="event.description" placeholder="Описание" />
                         </div>
                     </div>
 
@@ -32,8 +26,7 @@
                             <label>Дата</label>
                             <div class="time-item">
                                 <span class="time-label"> дата начала мероприятия</span>
-                                <input type="date" v-if="isEditing" v-model="editedEvent.date" id="imp_date" />
-                                <input type="date" v-else :value="event.date" readonly id="imp_date" />
+                                <input type="date" v-model="event.date" id="imp_date" />
                             </div>
                         </div>
                         <div class="form-group">
@@ -41,27 +34,22 @@
                             <div class="time-fields">
                                 <div class="time-item">
                                     <span class="time-label">Начало</span>
-                                    <input type="time" v-if="isEditing" v-model="editedEvent.time" />
-                                    <input type="time" v-else :value="event.time" readonly />
+                                    <input type="time" v-model="event.time" />
                                 </div>
                                 <div class="time-item">
                                     <span class="time-label">Конец</span>
-                                    <input type="time" v-if="isEditing" v-model="editedEvent.endTime" />
-                                    <input type="time" v-else :value="event.endTime" readonly />
+                                    <input type="time" v-model="event.endTime" />
                                 </div>
                             </div>
                             <p v-if="timeError" class="error-text">Время окончания должно быть позже начала</p>
                         </div>
                         <div class="form-group">
                             <label>Макс кол-во участников</label>
-                            <input type="number" v-if="isEditing" v-model="editedEvent.maxParticipants" />
-                            <input type="number" v-else :value="event.maxParticipants" readonly />
+                            <input type="number" v-model="event.maxParticipants" />
                         </div>
                         <div class="form-group location-wrapper">
                             <label>Место</label>
-                            <input type="text" v-if="isEditing" v-model="editedEvent.location"
-                                placeholder="Начните вводить адрес..." autocomplete="off" />
-                            <input type="text" v-else :value="event.location" readonly
+                            <input type="text" v-model="event.location" @input="handleAddressInput"
                                 placeholder="Начните вводить адрес..." autocomplete="off" />
                             <ul v-if="suggestions.length" class="suggestions-list">
                                 <li v-for="(s, i) in suggestions" :key="i" @click="selectSuggestion(s)">{{ s.value }}
@@ -74,17 +62,15 @@
                         <label>Формат мероприятия</label>
                         <div class="format-icons">
                             <div class="ww">
-                                <div class="format-option"
-                                    :class="{ active: isEditing ? editedEvent.format === 'offline' : event.format === 'offline' }"
-                                    @click="isEditing ? editedEvent.format = 'offline' : event.format = 'offline'">
+                                <div class="format-option" :class="{ active: event.format === 'offline' }"
+                                    @click="event.format = 'offline'">
                                     <img src="@/assets/icons/offline.png" alt="Offline" />
                                 </div>
                                 <p>Оффлайн</p>
                             </div>
                             <div class="ww">
-                                <div class="format-option"
-                                    :class="{ active: isEditing ? editedEvent.format === 'online' : event.format === 'online' }"
-                                    @click="isEditing ? editedEvent.format = 'online' : event.format = 'online'">
+                                <div class="format-option" :class="{ active: event.format === 'online' }"
+                                    @click="event.format = 'online'">
                                     <img src="@/assets/icons/online.png" alt="Online" />
                                 </div>
                                 <p>Онлайн</p>
@@ -96,12 +82,7 @@
                         <label>Объединение в группу</label>
                         <div class="group_or_solo">
                             <div>
-                                <select v-if="isEditing" v-model="editedEvent.grouping">
-                                    <option>Группы и соло</option>
-                                    <option>Только соло</option>
-                                    <option>Только группы</option>
-                                </select>
-                                <select v-else :value="event.grouping" disabled>
+                                <select v-model="event.grouping">
                                     <option>Группы и соло</option>
                                     <option>Только соло</option>
                                     <option>Только группы</option>
@@ -112,30 +93,27 @@
                             <transition-group name="fade" tag="div" class="view-switch">
                                 <template v-if="visibleFieldModes.includes('participant')">
                                     <input type="radio" id="participant-fields" value="participant" v-model="fieldMode"
-                                        key="participant" :readonly="!isEditing" />
+                                        key="participant" />
                                     <label for="participant-fields" key="label-participant">
                                         <img src="@/assets/icons/user.png" alt="User" />
                                     </label>
                                 </template>
                                 <template v-if="visibleFieldModes.includes('group')">
-                                    <input type="radio" id="group-fields" value="group" v-model="fieldMode" key="group"
-                                        :readonly="!isEditing" />
+                                    <input type="radio" id="group-fields" value="group" v-model="fieldMode"
+                                        key="group" />
                                     <label for="group-fields" key="label-group">
                                         <img src="@/assets/icons/stats.png" alt="Group" />
                                     </label>
                                 </template>
                             </transition-group>
-
                         </div>
                     </div>
                     <div class="dynamic-fields">
                         <h3>Собираемые Данные — {{ fieldMode === 'group' ? 'Группа' : 'Участник' }}</h3>
 
-                        <div class="field-item"
-                            v-for="(field, index) in isEditing ? editedEvent.fields[fieldMode] : event.fields[fieldMode]"
-                            :key="index">
-                            <input v-model="field.label" placeholder="Название поля" :readonly="!isEditing" />
-                            <select v-model="field.type" :readonly="!isEditing">
+                        <div class="field-item" v-for="(field, index) in event.fields[fieldMode]" :key="index">
+                            <input v-model="field.label" placeholder="Название поля" />
+                            <select v-model="field.type">
                                 <option value="text">Текст</option>
                                 <option value="number">Число</option>
                                 <option value="date">Дата</option>
@@ -144,47 +122,44 @@
                             </select>
 
                             <template v-if="field.type === 'select'">
-                                <input v-model="field.options" placeholder="Варианты через запятую"
-                                    :readonly="!isEditing" />
-                                <select :readonly="!isEditing">
+                                <input v-model="field.options" placeholder="Варианты через запятую" />
+                                <select>
                                     <option v-for="(opt, idx) in field.options.split(',')" :key="idx">{{ opt }}</option>
                                 </select>
                             </template>
 
                             <template v-if="field.type === 'boolean'">
-                                <select :disabled="!isEditing">
+                                <select disabled>
                                     <option>Да</option>
                                     <option>Нет</option>
                                 </select>
                             </template>
                             <template v-if="field.type === 'text'">
-                                <input :disabled="!isEditing" placeholder="Пример текста" />
+                                <input disabled placeholder="Пример текста" />
                             </template>
                             <template v-if="field.type === 'number'">
-                                <input :disabled="!isEditing" type="number" placeholder="123" />
+                                <input disabled type="number" placeholder="123" />
                             </template>
                             <template v-if="field.type === 'date'">
-                                <input :disabled="!isEditing" type="date" />
+                                <input disabled type="date" />
                             </template>
 
-                            <input v-model="field.description" placeholder="Описание" :readonly="!isEditing" />
-                            <button @click="removeField(index)" :disabled="!isEditing">×</button>
+                            <input v-model="field.description" placeholder="Описание" />
+                            <button @click="removeField(index)">×</button>
                         </div>
 
-                        <button class="add-field" @click="addField" :disabled="!isEditing">Добавить новое поле</button>
+                        <button class="add-field" @click="addField" v-if="!selectedEventId">Добавить новое поле</button>
                     </div>
 
-                    <div v-if="isEditMode && isEditing" style="display:flex; gap:1rem; margin:1rem 0;">
-                        <button class="create" @click="saveEdit">Сохранить</button>
-                        <button class="create" style="background:#888;" @click="cancelEdit">Отмена</button>
-                    </div>
-                    <div v-else-if="selectedEventId && !isEditing">
-                        <button class="create" @click="startEdit">Редактировать</button>
+                    <div class="create_event">
+                        <button class="create" @click="submitEvent" :disabled="timeError">{{ selectedEventId ?
+                            'Отправить Изменения' : 'Отправить'
+                        }}</button>
                     </div>
                 </div>
 
                 <div class="event-sidebar">
-                    <h4 class="tile_sidebar">Мои мероприятия</h4>
+                    <h4>Мои мероприятия</h4>
                     <div class="event-sidebar-scroll">
                         <div class="upcoming-event" v-for="ev in upcomingEvents" :key="ev.id" @click="selectEvent(ev)"
                             :class="{ active: selectedEventId === ev.id }">
@@ -192,6 +167,7 @@
                             <p class="side_name"> Дата начала: {{ formatDate(ev.startDateAndTime) }}</p>
                         </div>
                     </div>
+                    <button class="submit-btn" @click="resetForm">Создать мероприятие</button>
                 </div>
             </div>
         </div>
@@ -200,26 +176,26 @@
 
 <script setup>
 import NavBar from '@/components/nav_bar.vue'
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import axios from 'axios'
 import api from '@/utils/axios'
+import { onMounted } from 'vue'
 import { computed } from 'vue'
 
 const imageFile = ref(null)
 const imagePreview = ref('')
 const suggestions = ref([])
+const formatDate = dateStr => new Date(dateStr).toLocaleDateString()
 const fieldMode = ref('participant')
 const isEditing = ref(false)
 const isEditMode = ref(false)
-const editedEvent = ref({})
 const selectedEventId = ref(null)
-
-const formatDate = dateStr => new Date(dateStr).toLocaleDateString()
+const editedEvent = ref(null)
 
 const visibleFieldModes = computed(() => {
     if (event.value.grouping === 'Только соло') return ['participant']
     if (event.value.grouping === 'Только группы') return ['group']
-    return ['participant', 'group']
+    return ['participant', 'group'] // Группы и соло
 })
 
 const event = ref({
@@ -227,7 +203,6 @@ const event = ref({
     description: '',
     date: '',
     time: '',
-    endTime: '',
     maxParticipants: '',
     location: '',
     grouping: 'Группы и соло',
@@ -256,6 +231,7 @@ const getUserIdFromToken = () => {
 onMounted(async () => {
     const userId = getUserIdFromToken()
     if (!userId) return
+
     try {
         const res = await api.get(`/events/creator/${userId}`)
         upcomingEvents.value = res.data || []
@@ -281,7 +257,11 @@ const addField = () => {
 }
 
 const removeField = (index) => {
-    event.value.fields[fieldMode.value].splice(index, 1)
+    if (selectedEventId.value && editedEvent.value) {
+        editedEvent.value.fields[fieldMode.value].splice(index, 1)
+    } else {
+        event.value.fields[fieldMode.value].splice(index, 1)
+    }
 }
 
 const timeError = computed(() => {
@@ -290,56 +270,57 @@ const timeError = computed(() => {
     return event.value.endTime <= event.value.time
 })
 
-const prepareCustomFields = () => {
-    const participantFields = event.value.fields.participant.map(f => ({
-        name: f.label,
-        type: f.type,
-        require: true
-    }))
-    return [...participantFields]
-}
-
 const submitEvent = async () => {
+    console.log(event.value.endTime)
     const userId = getUserIdFromToken()
     if (!userId) {
-        console.error('JWT не найден или недействителен')
+        console.warn('Пользователь не авторизован')
         return
     }
 
-    const createDate = new Date()
-    const startDateTime = new Date(`${event.value.date}T${event.value.time}`)
-    const endDateTime = new Date(`${event.value.date}T${event.value.endTime}`)
+    const now = new Date().toISOString()
 
     const payload = {
         eventName: event.value.title,
         creatorId: userId,
         description: event.value.description,
-        image: imagePreview.value || '',
+        image: imageFile.value ? imageFile.value.name : 'string', // или загрузи на s3 и вставь ссылку
         online: event.value.format === 'online',
-        createDate: createDate.toISOString().replace('Z', ''),
-        startDateAndTime: startDateTime.toISOString().replace('Z', ''),
-        endDateAndTime: endDateTime.toISOString().replace('Z', ''),
+        createDate: now,
+        startDateAndTime: `${event.value.date}T${event.value.time}:00`,
+        endDateAndTime: `${event.value.date}T${event.value.endTime}:00`, // или отдельно выбери время конца
         maxParticipantNumber: Number(event.value.maxParticipants),
         currentParticipantQuantity: 0,
         eventAddress: event.value.location,
         isRecurring: false,
-        qrCode: ''
+        qrCode: 'string',
+        grouping: event.value.grouping,
+        fields: event.value.fields
     }
 
-    try {
-        const res = await api.post('/event', payload)
-        const eventId = res.data.id
-        console.log('Мероприятие создано', res.data)
-
-        const customFieldsPayload = {
-            event_id: eventId,
-            fields: prepareCustomFields()
+    if (selectedEventId.value) {
+        try {
+            await api.patch(`/events/${selectedEventId.value}`, payload)
+            console.log('Успешно обновлено:', payload)
+            alert('Мероприятие успешно обновлено!');
+            resetForm();
+            onMounted();
+        } catch (err) {
+            console.error('Ошибка обновления:', err)
+            alert('Ошибка при обновлении мероприятия');
         }
-        console.log(eventId, customFieldsPayload)
-        await api.post('/responses/custom-fields', customFieldsPayload)
-        console.log('Кастомные поля успешно добавлены')
-    } catch (err) {
-        console.error('Ошибка отправки:', err)
+
+    } else {
+        try {
+            const res = await api.post('/events', payload)
+            console.log('Успешно отправлено:', res.data)
+            alert('Мероприятие успешно создано!');
+            resetForm();
+            onMounted();
+        } catch (err) {
+            console.error('Ошибка отправки:', err)
+            alert('Ошибка при создании мероприятия');
+        }
     }
 }
 
@@ -369,7 +350,7 @@ const selectSuggestion = (suggestion) => {
 
 const selectEvent = async (ev) => {
     selectedEventId.value = ev.id
-    isEditMode.value = false
+    isEditMode.value = true
     isEditing.value = false
     try {
         const res = await api.get(`/event/${ev.id}`)
@@ -387,50 +368,38 @@ const selectEvent = async (ev) => {
             fields: data.fields || { participant: [], group: [] }
         }
         imagePreview.value = data.image || ''
+        editedEvent.value = { ...event.value }
     } catch (e) {
         console.error('Ошибка загрузки мероприятия:', e)
+        alert('Ошибка при загрузке мероприятия');
     }
 }
 
-const startEdit = () => {
-    editedEvent.value = { ...event.value }
-    isEditing.value = true
-    isEditMode.value = true
-}
-
-const cancelEdit = () => {
-    isEditing.value = false
-    isEditMode.value = false
-}
-
-const saveEdit = async () => {
-    if (!selectedEventId.value) return
-    try {
-        const payload = {
-            event: {
-                eventName: editedEvent.value.title,
-                creatorId: getUserIdFromToken(),
-                description: editedEvent.value.description,
-                image: imagePreview.value || '',
-                online: editedEvent.value.format === 'online',
-                createDate: new Date().toISOString().replace('Z', ''),
-                startDateAndTime: `${editedEvent.value.date}T${editedEvent.value.time}`,
-                endDateAndTime: `${editedEvent.value.date}T${editedEvent.value.endTime}`,
-                maxParticipantNumber: Number(editedEvent.value.maxParticipants),
-                currentParticipantQuantity: 0,
-                eventAddress: editedEvent.value.location,
-                isRecurring: false,
-                qrCode: ''
-            }
+const resetForm = () => {
+    selectedEventId.value = null;
+    isEditMode.value = false;
+    isEditing.value = false;
+    editedEvent.value = null;
+    event.value = {
+        title: '',
+        description: '',
+        date: '',
+        time: '',
+        maxParticipants: '',
+        location: '',
+        grouping: 'Группы и соло',
+        format: 'offline',
+        fields: {
+            participant: [],
+            group: []
         }
-        await api.patch(`/event/${selectedEventId.value}`, payload)
-        event.value = { ...editedEvent.value }
-        isEditing.value = false
-        isEditMode.value = false
-    } catch (e) {
-        alert('Ошибка при сохранении мероприятия')
-    }
-}
+    };
+    imageFile.value = null;
+    imagePreview.value = '';
+    suggestions.value = [];
+    fieldMode.value = 'participant';
+};
+
 </script>
 
 <style scoped>
@@ -452,7 +421,6 @@ const saveEdit = async () => {
     margin-left: 2rem;
     transition: width 0.5s ease;
 }
-
 
 .view-switch input[type="radio"] {
     display: none;
@@ -487,8 +455,6 @@ const saveEdit = async () => {
     transform: scale(0.8);
 }
 
-
-
 .format-icons {
     justify-content: center;
     display: flex;
@@ -515,7 +481,6 @@ const saveEdit = async () => {
 }
 
 .create {
-
     background: linear-gradient(to right, #3b82f6, #9333ea);
     color: white;
     padding: 0.6rem 1.2rem;
@@ -536,14 +501,12 @@ const saveEdit = async () => {
     background: #555;
 }
 
-
 .ww {
     display: grid;
     gap: 0.5rem;
     justify-content: center;
     align-items: center;
 }
-
 
 .event-create-page {
     display: flex;
@@ -571,7 +534,6 @@ const saveEdit = async () => {
 }
 
 .group-section select {
-
     width: 12rem;
 }
 
@@ -610,30 +572,15 @@ const saveEdit = async () => {
     position: relative;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 .event-sidebar {
     background: #222;
     border-radius: 0 10px 10px 0;
     width: 300px;
     flex-shrink: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     max-height: 100vh;
-    animation: slideInRight 0.6s ease-out;
 }
 
 .event-sidebar-scroll {
@@ -646,27 +593,6 @@ const saveEdit = async () => {
 
 .event-sidebar-scroll::-webkit-scrollbar {
     display: none;
-}
-
-
-
-.event-sidebar {
-    background: #222;
-    border-radius: 0 10px 10px 0;
-    padding: 1rem;
-    width: 300px;
-    height: fit-content;
-}
-
-.event-sidebar {
-    background: #222;
-    border-radius: 0 10px 10px 0;
-    width: 300px;
-    flex-shrink: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    max-height: 100vh;
 }
 
 .event-title,
@@ -722,13 +648,11 @@ select:focus {
 }
 
 .group-section {
-
     align-items: center;
     display: grid;
     justify-content: center;
     margin: 1rem 0;
     text-align: center;
-
 }
 
 .group-section label {
@@ -780,8 +704,6 @@ select:focus {
     flex: 1;
 }
 
-
-
 .tile_sidebar {
     position: sticky;
     top: 0;
@@ -793,8 +715,6 @@ select:focus {
     z-index: 10;
     border-bottom: 1px solid #222;
 }
-
-
 
 .field-item {
     display: flex;
@@ -857,11 +777,17 @@ select:focus {
     border-radius: 6px;
     margin-bottom: 0.5rem;
     transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .upcoming-event:hover {
     transform: translateX(5px);
     background: #555;
+}
+
+.upcoming-event.active {
+    background: #555;
+    border: 1px solid #9333ea;
 }
 
 .time-fields {
@@ -958,5 +884,17 @@ button.create:disabled {
     100% {
         box-shadow: 0 0 0 0 rgba(147, 51, 234, 0);
     }
+}
+
+.view-mode-field {
+    border: 1px solid #555 !important;
+    background: #333 !important;
+    cursor: default !important;
+    color: #ccc !important;
+}
+
+.view-mode-field:focus {
+    box-shadow: none !important;
+    border-color: #555 !important;
 }
 </style>
