@@ -300,7 +300,7 @@ const submitEvent = async () => {
 
     if (selectedEventId.value) {
         try {
-            await api.patch(`/events/${selectedEventId.value}`, payload)
+            await api.patch(`/event/${selectedEventId.value}`, payload)
             console.log('Успешно обновлено:', payload)
             alert('Мероприятие успешно обновлено!');
             resetForm();
@@ -312,7 +312,7 @@ const submitEvent = async () => {
 
     } else {
         try {
-            const res = await api.post('/events', payload)
+            const res = await api.post('/event', payload)
             console.log('Успешно отправлено:', res.data)
             alert('Мероприятие успешно создано!');
             resetForm();
