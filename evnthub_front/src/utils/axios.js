@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // Создание инстанса
 const api = axios.create({
-  baseURL: 'http://212.22.94.76:8081/api',
+  baseURL: 'https://api.event-hub.space/api',
   withCredentials: true // нужно для отправки HttpOnly cookie с refresh токеном
 })
 
