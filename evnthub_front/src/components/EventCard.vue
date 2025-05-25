@@ -136,7 +136,7 @@ const goToEventDetails = () => {
     padding: 12px;
     gap: 1rem;
     border: 0.1rem solid #eee;
-    border-radius: 30px;
+    border-radius: 16px;
     margin-top: 1rem;
     margin-bottom: 1rem;
     cursor: pointer;
