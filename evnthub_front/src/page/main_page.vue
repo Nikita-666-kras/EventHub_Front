@@ -53,16 +53,7 @@
       </Splide>
     </section>
 
-    <div class="features-section">
-      <div class="feature-card hover-lift" v-for="feature in features" :key="feature.id">
-        <!-- Существующий контент -->
-      </div>
-    </div>
-    <div class="events-section">
-      <div class="event-card hover-scale" v-for="event in events" :key="event.id">
-        <!-- Существующий контент -->
-      </div>
-    </div>
+
     <section class="description-Block">
       <div class="first_desciption">
         <div class="description-text">
@@ -150,21 +141,25 @@ const splideOptions = {
   autoplay: true,
   pauseOnHover: true,
   arrows: true,
-  pagination: true,
+  pagination: false, // отключает точки
   breakpoints: {
     1024: { perPage: 2 },
     600: { perPage: 1 }
   }
 }
 
+
 onMounted(async () => {
   try {
-    const res = await api.get('/events/page?limit=10&sortBy=start_date_and_time')
+    const res = await api.get('/events/page?limit=5&sortBy=start_date_and_time')
     events.value = res.data || []
+    console.log('Ответ от /events/page:', res.data)
+
   } catch (e) {
     console.error('Ошибка загрузки мероприятий:', e)
   }
 })
+
 
 function isLoggedIn() {
   const token = document.cookie

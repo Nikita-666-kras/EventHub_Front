@@ -278,7 +278,7 @@ const submitEvent = async () => {
         return
     }
 
-    const now = new Date().toISOString()
+    const now = new Date().toLocaleString('sv-SE').replace(' ', 'T')
 
     const payload = {
         eventName: event.value.title,
