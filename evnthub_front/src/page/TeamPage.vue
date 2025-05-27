@@ -89,7 +89,7 @@ import { ref, onMounted } from 'vue'
 import NavBar from '@/components/nav_bar.vue'
 import api from '@/utils/axios'
 
-const team = ref({ id: null, name: '', image: '', members: [] })
+const team = ref({ id: null, name: '', event: null, members: [] })
 const userTeams = ref([])
 const selectedTeam = ref(null)
 const imageFile = ref(null)
@@ -99,44 +99,66 @@ const invites = ref([])
 const userSearch = ref('')
 const searchResults = ref([])
 
-const getUserIdFromToken = () => {
-    const token = document.cookie.split('; ').find(r => r.startsWith('jwt='))?.split('=')[1]
-    if (!token) return null
-    try {
-        return JSON.parse(atob(token.split('.')[1])).sub || null
-    } catch { return null }
-}
-
 const selectedEventId = ref(null)
 const availableEvents = ref([])
 
+const getUserIdFromToken = () => {
+  const token = document.cookie.split('; ').find(r => r.startsWith('jwt='))?.split('=')[1]
+  if (!token) return null
+  try {
+    return JSON.parse(atob(token.split('.')[1])).sub || null
+  } catch {
+    return null
+  }
+}
+
 const loadAvailableEvents = async () => {
-    const userId = getUserIdFromToken()
-    if (!userId) return
-    const res = await api.get(`/events/participant/${userId}`)
-    availableEvents.value = res.data || []
-    if (availableEvents.value.length > 0) {
-        selectedEventId.value = availableEvents.value[0].id
-    }
+  const userId = getUserIdFromToken()
+  if (!userId) return
+  const res = await api.get(`/events/participant/${userId}`)
+  availableEvents.value = res.data || []
+  if (availableEvents.value.length > 0 && !selectedEventId.value) {
+    selectedEventId.value = availableEvents.value[0].id
+  }
+}
+
+const loadUserTeams = async () => {
+  const userId = getUserIdFromToken()
+  if (!userId) return
+  console.log(userId)
+  userTeams.value = (await api.get(`/teams/user/${userId}`)).data || []
+}
+
+const selectTeam = async (teamItem) => {
+  selectedTeam.value = teamItem
+  const resMembers = await api.get(`/teams/${teamItem.id}/members`)
+  team.value = { ...teamItem, members: resMembers.data || [] }
+
+  // Загрузить заявки и приглашения для выбранной команды
+  const resJoinRequests = await api.get('/teams/join-requests')
+  joinRequests.value = resJoinRequests.data.filter(r => r.teamId === teamItem.id)
+
+  const resInvites = await api.get('/teams/invites')
+  invites.value = resInvites.data.filter(i => i.teamId === teamItem.id)
 }
 
 const submitTeam = async () => {
   const userId = getUserIdFromToken()
-  if (!userId) return alert('Не авторизован')
-
-  team.value.event = availableEvents.value.find(ev => ev.id === selectedEventId.value) || null
-
+  if (!userId) {
+    alert('Не авторизован')
+    return
+  }
   if (!team.value.name) {
     alert('Введите название команды')
     return
   }
-  if (!team.value.event || !team.value.event.id) {
-    alert('Сначала выберите мероприятие для команды')
+  if (!selectedEventId.value) {
+    alert('Выберите мероприятие')
     return
   }
 
   const payload = {
-    event_id: team.value.event.id,
+    event_id: selectedEventId.value,
     name: team.value.name,
     leader_id: userId,
     type: team.value.type || 'FIXED',
@@ -144,128 +166,101 @@ const submitTeam = async () => {
 
   try {
     if (selectedTeam.value) {
-      // Обновление команды — сюда можно добавить логику обновления
       await api.patch(`/teams/${team.value.id}/update`, payload)
       alert('Команда обновлена')
     } else {
-      // Создание новой команды
-      console.log('[submitTeam] Создаём команду:', payload)
       const res = await api.post('/teams', payload)
-      console.log('[submitTeam] Создана команда:', res.data)
       alert('Команда создана')
+      // После создания команды сразу обновляем список
+      await loadUserTeams()
     }
     await loadUserTeams()
   } catch (e) {
-    console.error('[submitTeam] Ошибка:', e.response?.data || e.message)
     alert('Ошибка при сохранении команды')
+    console.error(e)
   }
 }
 
-
-
-const loadUserTeams = async () => {
-  const userId = getUserIdFromToken()
-  if (!userId) return
-  const res = await api.get(`/teams/user/${userId}`)
-  userTeams.value = res.data || []
-}
-const selectTeam = async (teamItem) => {
+const addMember = async () => {
+  if (!team.value.id) {
+    alert('Выберите команду')
+    return
+  }
+  if (!userSearch.value.trim()) {
+    alert('Введите имя или email участника для поиска')
+    return
+  }
   try {
-    selectedTeam.value = teamItem
-    const [members, allReqs, allInv] = await Promise.all([
-      api.get(`/teams/${teamItem.id}/members`),
-      api.get(`/teams/join-requests`),
-      api.get(`/teams/invites`)
-    ])
-    const full = userTeams.value.find(t => t.id === teamItem.id)
-    team.value = { ...full, members: members.data || [] }
-    joinRequests.value = allReqs.data.filter(r => r.teamId === teamItem.id)
-    invites.value = allInv.data.filter(i => i.teamId === teamItem.id)
-  } catch (error) {
-    console.error('Ошибка загрузки команды:', error)
-    // можно показать сообщение об ошибке пользователю
-  }
-}
-
-
-// const submitTeam = async () => {
-//     const userId = getUserIdFromToken()
-//     if (!userId || !team.value.name) return alert('Заполните имя')
-//     const formData = new FormData()
-//     formData.append('name', team.value.name)
-//     formData.append('leader_id', userId)
-//     if (imageFile.value) formData.append('image', imageFile.value)
-//     if (selectedTeam.value) {
-//         await api.patch(`/teams/${team.value.id}/update`, formData)
-//         alert('Команда обновлена')
-//     } else {
-//         await api.post('/teams', formData)
-//         alert('Команда создана')
-//     }
-//     await loadUserTeams()
-// }
-
-const handleImageUpload = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-        imageFile.value = file
-        const reader = new FileReader()
-        reader.onload = () => (imagePreview.value = reader.result)
-        reader.readAsDataURL(file)
+    // Найдём пользователя (поиск в поисковых результатах)
+    const userToAdd = searchResults.value.find(u => u.nickname === userSearch.value || u.email === userSearch.value)
+    if (!userToAdd) {
+      alert('Пользователь не найден')
+      return
     }
+    await api.post(`/teams/${team.value.id}/add-member`, {
+      participant_id: userToAdd.id,
+      role: 'MEMBER',
+    })
+    alert('Участник добавлен')
+    userSearch.value = ''
+    searchResults.value = []
+    await selectTeam(team.value) // Обновим участников
+  } catch (e) {
+    alert('Ошибка при добавлении участника')
+    console.error(e)
+  }
 }
 
 const searchUsers = async () => {
-    if (!userSearch.value) return searchResults.value = []
-    const res = await api.get(`/users/search?query=${userSearch.value}`)
-    searchResults.value = res.data || []
-}
-
-const inviteUser = async (user) => {
-    if (!team.value.id) return
-    await api.post(`/teams/${team.value.id}/invites`, {
-        participant_id: user.id
-    })
-    userSearch.value = ''
+  if (!userSearch.value.trim()) {
     searchResults.value = []
-    await selectTeam(team.value)
+    return
+  }
+  try {
+    const res = await api.get(`/users/search?query=${encodeURIComponent(userSearch.value)}`)
+    searchResults.value = res.data || []
+  } catch (e) {
+    console.error('Ошибка поиска пользователей', e)
+    searchResults.value = []
+  }
 }
 
 const approveRequest = async (id) => {
-    await api.patch(`/teams/join-requests/${id}/status`, { status: 'APPROVED' })
-    await selectTeam(team.value)
+  await api.patch(`/teams/join-requests/${id}/status`, { status: 'APPROVED' })
+  await selectTeam(team.value)
 }
 
 const rejectRequest = async (id) => {
-    await api.patch(`/teams/join-requests/${id}/status`, { status: 'REJECTED' })
-    await selectTeam(team.value)
+  await api.patch(`/teams/join-requests/${id}/status`, { status: 'REJECTED' })
+  await selectTeam(team.value)
 }
 
 const cancelInvite = async (id) => {
-    await api.patch(`/teams/invites/${id}/status`, { status: 'CANCELLED' })
-    await selectTeam(team.value)
+  await api.patch(`/teams/invites/${id}/status`, { status: 'CANCELLED' })
+  await selectTeam(team.value)
 }
 
 const removeMember = async (id) => {
-    await api.delete(`/teams/${team.value.id}/remove-member/${id}`)
-    await selectTeam(team.value)
+  await api.delete(`/teams/${team.value.id}/remove-member/${id}`)
+  await selectTeam(team.value)
 }
 
 const resetForm = () => {
-    selectedTeam.value = null
-    team.value = { id: null, name: '', image: '', members: [] }
-    imageFile.value = null
-    imagePreview.value = null
-    userSearch.value = ''
-    searchResults.value = []
+  selectedTeam.value = null
+  team.value = { id: null, name: '', event: null, members: [] }
+  imageFile.value = null
+  imagePreview.value = null
+  userSearch.value = ''
+  searchResults.value = []
+  selectedEventId.value = null
 }
 
 onMounted(() => {
   loadUserTeams()
   loadAvailableEvents()
 })
-
 </script>
+
 
 
 
