@@ -4,7 +4,8 @@
         <div class="main-section">
             <div class="team-form">
                 <div class="header">
-                    <input v-model="team.name" placeholder="Название команды" class="team-title" />
+                    <input v-model="team.name" placeholder="Название команды" class="team-title"
+                        :disabled="isTeamCreated" />
                     <div class="image-upload">
                         <label for="imageInput">
                             <div class="image-preview"
@@ -16,18 +17,7 @@
                     </div>
                 </div>
 
-                <div v-if="team.members.length" class="form-group">
-                    <label>Участники команды</label>
-                    <div class="participants-list">
-                        <div class="participant-item" v-for="member in team.members" :key="member.id">
-                            <span>{{ member.nickname }} ({{ member.email }})</span>
-                            <span v-if="member.isLeader" class="badge">Лидер</span>
-                            <button v-if="!member.isLeader" class="remove-btn"
-                                @click="removeMember(member.id)">×</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
+                <div v-if="!isTeamCreated" class="form-group">
                     <label for="eventSelect">Выберите мероприятие</label>
                     <select v-model="selectedEventId" id="eventSelect">
                         <option v-for="ev in availableEvents" :key="ev.id" :value="ev.id">
@@ -36,15 +26,36 @@
                     </select>
                 </div>
 
-                <div v-if="selectedTeam" class="form-group">
+                <div class="button-group">
+                    <button @click="submitTeam" class="create">
+                        {{ isTeamCreated ? 'Сохранить изменения' : 'Создать' }}
+                    </button>
+                </div>
+
+                <div v-if="isTeamCreated" class="form-group">
                     <label>Пригласить участника</label>
-                    <input type="text" v-model="userSearch" @input="searchUsers"
-                        placeholder="Начните вводить имя или email" class="search-input" />
-                    <ul v-if="searchResults.length" class="search-results">
-                        <li v-for="user in searchResults" :key="user.id" @click="inviteUser(user)">
-                            {{ user.nickname }} ({{ user.email }})
-                        </li>
-                    </ul>
+                    <select v-model="selectedParticipantId" class="search-select">
+                        <option disabled value="">Выберите участника</option>
+                        <option v-for="participant in eventParticipants" :key="participant.id" :value="participant.id">
+                            {{ getParticipantDisplayName(participant) }}
+                        </option>
+                    </select>
+                    <button @click="inviteSelectedUser" :disabled="!selectedParticipantId" class="invite-btn">
+                        Пригласить
+                    </button>
+                </div>
+
+                <div v-if="team.members.length" class="form-group">
+                    <label>Участники команды</label>
+                    <div class="participants-list">
+                        <div class="participant-item" v-for="member in team.members" :key="member.id">
+                            <span>{{ member.nickname }} ({{ member.email }})</span>
+                            <span v-if="member.isLeader" class="badge">Лидер</span>
+                            <button v-if="!member.isLeader" class="remove-btn" @click="removeMember(member.id)">
+                                ×
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div v-if="joinRequests.length" class="form-group">
@@ -63,11 +74,6 @@
                         <button @click="cancelInvite(inv.id)">Отозвать</button>
                     </div>
                 </div>
-
-                <div class="button-group">
-                    <button @click="submitTeam" class="create">{{ selectedTeam ? 'Сохранить' : 'Создать' }}</button>
-                    <button @click="resetForm" class="secondary">Новая команда</button>
-                </div>
             </div>
 
             <div class="event-sidebar">
@@ -75,7 +81,8 @@
                 <div class="event-sidebar-scroll">
                     <div class="upcoming-event" v-for="team in userTeams" :key="team.id" @click="selectTeam(team)"
                         :class="{ active: selectedTeam?.id === team.id }">
-                        <p>{{ team.name }}</p>
+                        <p>{{ team.name || 'Без названия' }}</p>
+                        <button @click.stop="editTeam(team)">Редактировать</button>
                     </div>
                 </div>
                 <button @click="resetForm" class="submit-btn">Создать команду</button>
@@ -85,7 +92,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import NavBar from '@/components/nav_bar.vue'
 import api from '@/utils/axios'
 
@@ -96,176 +103,202 @@ const imageFile = ref(null)
 const imagePreview = ref(null)
 const joinRequests = ref([])
 const invites = ref([])
-const userSearch = ref('')
-const searchResults = ref([])
-
 const selectedEventId = ref(null)
 const availableEvents = ref([])
+const eventParticipants = ref([])
+const selectedParticipantId = ref('')
+const isTeamCreated = ref(false)
+
+const getParticipantDisplayName = (participant) => {
+    const user = participant.user || {}
+    const nickname = user.nickname || user.name || 'Без имени'
+    const email = user.email || 'без email'
+    return `${nickname} (${email})`
+}
 
 const getUserIdFromToken = () => {
-  const token = document.cookie.split('; ').find(r => r.startsWith('jwt='))?.split('=')[1]
-  if (!token) return null
-  try {
-    return JSON.parse(atob(token.split('.')[1])).sub || null
-  } catch {
-    return null
-  }
+    const token = document.cookie.split('; ').find(r => r.startsWith('jwt='))?.split('=')[1]
+    if (!token) return null
+    try {
+        return JSON.parse(atob(token.split('.')[1])).sub || null
+    } catch {
+        return null
+    }
 }
 
 const loadAvailableEvents = async () => {
-  const userId = getUserIdFromToken()
-  if (!userId) return
-  const res = await api.get(`/events/participant/${userId}`)
-  availableEvents.value = res.data || []
-  if (availableEvents.value.length > 0 && !selectedEventId.value) {
-    selectedEventId.value = availableEvents.value[0].id
-  }
+    const userId = getUserIdFromToken()
+    if (!userId) return
+    const res = await api.get(`/events/participant/${userId}`)
+    availableEvents.value = res.data || []
+    if (availableEvents.value.length > 0 && !selectedEventId.value) {
+        selectedEventId.value = availableEvents.value[0].id
+    }
 }
 
 const loadUserTeams = async () => {
-  const userId = getUserIdFromToken()
-  if (!userId) return
-  console.log(userId)
-  userTeams.value = (await api.get(`/teams/user/${userId}`)).data || []
+    const userId = getUserIdFromToken()
+    if (!userId) return
+    try {
+        const asParticipant = await api.get(`/teams/user/${userId}`)
+        const eventsCreated = await api.get(`/events/creator/${userId}`)
+        const teamPromises = eventsCreated.data.map(ev =>
+            api.get(`/teams/${ev.id}`).then(res => res.data.teams || [])
+        )
+        const teamsByEvents = await Promise.all(teamPromises)
+        const asLeader = teamsByEvents.flat()
+        const combined = [...asParticipant.data || [], ...asLeader]
+        const map = new Map()
+        for (const team of combined) {
+            map.set(team.id, team)
+        }
+        userTeams.value = Array.from(map.values())
+    } catch (err) {
+        console.error('❌ Ошибка при загрузке команд:', err)
+    }
 }
 
 const selectTeam = async (teamItem) => {
-  selectedTeam.value = teamItem
-  const resMembers = await api.get(`/teams/${teamItem.id}/members`)
-  team.value = { ...teamItem, members: resMembers.data || [] }
+    selectedTeam.value = teamItem
+    const resMembers = await api.get(`/teams/${teamItem.id}/members`)
+    team.value = { ...teamItem, members: resMembers.data?.members || [] }
+    try {
+        const resJoinRequests = await api.get(`/teams/${teamItem.id}/join-requests`)
+        joinRequests.value = resJoinRequests.data || []
+    } catch (e) {
+        joinRequests.value = []
+    }
+    try {
+        const resInvites = await api.get(`/teams/${teamItem.id}/invites`)
+        invites.value = resInvites.data || []
+    } catch (e) {
+        invites.value = []
+    }
+    isTeamCreated.value = true
+}
 
-  // Загрузить заявки и приглашения для выбранной команды
-  const resJoinRequests = await api.get('/teams/join-requests')
-  joinRequests.value = resJoinRequests.data.filter(r => r.teamId === teamItem.id)
-
-  const resInvites = await api.get('/teams/invites')
-  invites.value = resInvites.data.filter(i => i.teamId === teamItem.id)
+const editTeam = async (teamItem) => {
+    await selectTeam(teamItem)
+    isTeamCreated.value = true
 }
 
 const submitTeam = async () => {
-  const userId = getUserIdFromToken()
-  if (!userId) {
-    alert('Не авторизован')
-    return
-  }
-  if (!team.value.name) {
-    alert('Введите название команды')
-    return
-  }
-  if (!selectedEventId.value) {
-    alert('Выберите мероприятие')
-    return
-  }
-
-  const payload = {
-    event_id: selectedEventId.value,
-    name: team.value.name,
-    leader_id: userId,
-    type: team.value.type || 'FIXED',
-  }
-
-  try {
-    if (selectedTeam.value) {
-      await api.patch(`/teams/${team.value.id}/update`, payload)
-      alert('Команда обновлена')
-    } else {
-      const res = await api.post('/teams', payload)
-      alert('Команда создана')
-      // После создания команды сразу обновляем список
-      await loadUserTeams()
+    const userId = getUserIdFromToken()
+    if (!userId) return alert('Не авторизован')
+    if (!team.value.name) return alert('Введите название команды')
+    if (!selectedEventId.value) return alert('Выберите мероприятие')
+    const payload = {
+        event_id: selectedEventId.value,
+        name: team.value.name,
+        leader_id: userId,
+        type: 'FIXED',
     }
-    await loadUserTeams()
-  } catch (e) {
-    alert('Ошибка при сохранении команды')
-    console.error(e)
-  }
-}
-
-const addMember = async () => {
-  if (!team.value.id) {
-    alert('Выберите команду')
-    return
-  }
-  if (!userSearch.value.trim()) {
-    alert('Введите имя или email участника для поиска')
-    return
-  }
-  try {
-    // Найдём пользователя (поиск в поисковых результатах)
-    const userToAdd = searchResults.value.find(u => u.nickname === userSearch.value || u.email === userSearch.value)
-    if (!userToAdd) {
-      alert('Пользователь не найден')
-      return
+    try {
+        if (selectedTeam.value) {
+            await api.patch(`/teams/${team.value.id}/update`, {
+                team_id: team.value.id,
+                new_name: team.value.name,
+            })
+            alert('Команда обновлена')
+        } else {
+            const res = await api.post('/teams', payload)
+            const createdId = res.data.team_id
+            try {
+                const checkRes = await api.get(`/participants/check/${userId}/${selectedEventId.value}`)
+                if (!checkRes.data?.is_registered) {
+                    await api.post('/participants/register', {
+                        userId: userId,
+                        eventId: selectedEventId.value,
+                    })
+                }
+            } catch (checkErr) {
+                console.error('❌ Ошибка при проверке участника:', checkErr)
+            }
+            await loadUserTeams()
+            const newTeam = userTeams.value.find(t => t.id === createdId)
+            if (newTeam) await selectTeam(newTeam)
+        }
+    } catch (e) {
+        alert('Ошибка при создании команды')
+        console.error('❌ Ошибка submitTeam:', e)
     }
-    await api.post(`/teams/${team.value.id}/add-member`, {
-      participant_id: userToAdd.id,
-      role: 'MEMBER',
-    })
-    alert('Участник добавлен')
-    userSearch.value = ''
-    searchResults.value = []
-    await selectTeam(team.value) // Обновим участников
-  } catch (e) {
-    alert('Ошибка при добавлении участника')
-    console.error(e)
-  }
-}
-
-const searchUsers = async () => {
-  if (!userSearch.value.trim()) {
-    searchResults.value = []
-    return
-  }
-  try {
-    const res = await api.get(`/users/search?query=${encodeURIComponent(userSearch.value)}`)
-    searchResults.value = res.data || []
-  } catch (e) {
-    console.error('Ошибка поиска пользователей', e)
-    searchResults.value = []
-  }
 }
 
 const approveRequest = async (id) => {
-  await api.patch(`/teams/join-requests/${id}/status`, { status: 'APPROVED' })
-  await selectTeam(team.value)
+    await api.patch(`/teams/join-requests/${id}/status`, { status: 'APPROVED' })
+    await selectTeam(team.value)
 }
 
 const rejectRequest = async (id) => {
-  await api.patch(`/teams/join-requests/${id}/status`, { status: 'REJECTED' })
-  await selectTeam(team.value)
+    await api.patch(`/teams/join-requests/${id}/status`, { status: 'REJECTED' })
+    await selectTeam(team.value)
 }
 
 const cancelInvite = async (id) => {
-  await api.patch(`/teams/invites/${id}/status`, { status: 'CANCELLED' })
-  await selectTeam(team.value)
+    await api.patch(`/teams/invites/${id}/status`, { status: 'CANCELLED' })
+    await selectTeam(team.value)
 }
 
 const removeMember = async (id) => {
-  await api.delete(`/teams/${team.value.id}/remove-member/${id}`)
-  await selectTeam(team.value)
+    await api.delete(`/teams/${team.value.id}/remove-member/${id}`)
+    await selectTeam(team.value)
 }
 
 const resetForm = () => {
-  selectedTeam.value = null
-  team.value = { id: null, name: '', event: null, members: [] }
-  imageFile.value = null
-  imagePreview.value = null
-  userSearch.value = ''
-  searchResults.value = []
-  selectedEventId.value = null
+    selectedTeam.value = null
+    team.value = { id: null, name: '', event: null, members: [] }
+    imageFile.value = null
+    imagePreview.value = null
+    selectedEventId.value = null
+    selectedParticipantId.value = ''
+    joinRequests.value = []
+    invites.value = []
+    isTeamCreated.value = false
 }
 
-onMounted(() => {
-  loadUserTeams()
-  loadAvailableEvents()
+const handleImageUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+        imageFile.value = file
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            imagePreview.value = e.target.result
+        }
+        reader.readAsDataURL(file)
+    }
+}
+
+watch(selectedEventId, async (newVal) => {
+    if (!newVal) return
+    try {
+        const res = await api.get(`/participants/${newVal}`)
+        const rawParticipants = res.data || []
+        const detailed = await Promise.all(
+            rawParticipants.map(async (p) => {
+                try {
+                    const userRes = await api.get(`/users/${p.userId}`)
+                    return { ...p, user: userRes.data }
+                } catch {
+                    return p
+                }
+            })
+        )
+        eventParticipants.value = detailed
+    } catch (e) {
+        console.error('Ошибка загрузки участников:', e)
+    }
+})
+
+onMounted(async () => {
+    await loadUserTeams()
+    await loadAvailableEvents()
 })
 </script>
 
 
 
-
-
-<<style scoped>
+<style scoped>
+/* стили как ты дал выше, без изменений */
 .team-page {
     display: flex;
     justify-content: center;
@@ -491,16 +524,27 @@ select:focus {
 .submit-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(147, 51, 234, 0.4);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
     }
 
-    @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-50px);
     }
 
-    @keyframes slideInLeft {
-    from { opacity: 0; transform: translateX(-50px); }
-    to { opacity: 1; transform: translateX(0); }
+    to {
+        opacity: 1;
+        transform: translateX(0);
     }
-    
+}
 </style>

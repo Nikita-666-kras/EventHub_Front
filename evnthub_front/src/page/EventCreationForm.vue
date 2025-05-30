@@ -25,8 +25,8 @@
                         <div class="form-group">
                             <label>Дата</label>
                             <div class="time-item">
-                                <span class="time-label"> дата начала мероприятия</span>
-                                <input type="date" v-model="event.date" id="imp_date" />
+                                <span class="time-label">дата начала мероприятия</span>
+                                <input type="date" v-model="event.date" />
                             </div>
                         </div>
                         <div class="form-group">
@@ -50,9 +50,10 @@
                         <div class="form-group location-wrapper">
                             <label>Место</label>
                             <input type="text" v-model="event.location" @input="handleAddressInput"
-                                placeholder="Начните вводить адрес..." autocomplete="off" />
+                                placeholder="Адрес..." />
                             <ul v-if="suggestions.length" class="suggestions-list">
-                                <li v-for="(s, i) in suggestions" :key="i" @click="selectSuggestion(s)">{{ s.value }}
+                                <li v-for="(s, i) in suggestions" :key="i" @click="selectSuggestion(s)">
+                                    {{ s.value }}
                                 </li>
                             </ul>
                         </div>
@@ -89,25 +90,20 @@
                                 </select>
                             </div>
 
-                            <!-- СВИЧ ДЛЯ ПЕРЕКЛЮЧЕНИЯ МЕЖДУ ПОЛЯМИ ДЛЯ УЧАСТНИКОВ И ГРУПП -->
-                            <transition-group name="fade" tag="div" class="view-switch">
+                            <div class="view-switch">
                                 <template v-if="visibleFieldModes.includes('participant')">
-                                    <input type="radio" id="participant-fields" value="participant" v-model="fieldMode"
-                                        key="participant" />
-                                    <label for="participant-fields" key="label-participant">
-                                        <img src="@/assets/icons/user.png" alt="User" />
-                                    </label>
+                                    <input type="radio" id="participant-fields" value="participant"
+                                        v-model="fieldMode" />
+                                    <label for="participant-fields"><img src="@/assets/icons/user.png" /></label>
                                 </template>
                                 <template v-if="visibleFieldModes.includes('group')">
-                                    <input type="radio" id="group-fields" value="group" v-model="fieldMode"
-                                        key="group" />
-                                    <label for="group-fields" key="label-group">
-                                        <img src="@/assets/icons/stats.png" alt="Group" />
-                                    </label>
+                                    <input type="radio" id="group-fields" value="group" v-model="fieldMode" />
+                                    <label for="group-fields"><img src="@/assets/icons/stats.png" /></label>
                                 </template>
-                            </transition-group>
+                            </div>
                         </div>
                     </div>
+
                     <div class="dynamic-fields">
                         <h3>Собираемые Данные — {{ fieldMode === 'group' ? 'Группа' : 'Участник' }}</h3>
 
@@ -121,40 +117,27 @@
                                 <option value="select">Выбор</option>
                             </select>
 
-                            <template v-if="field.type === 'select'">
-                                <input v-model="field.options" placeholder="Варианты через запятую" />
-                                <select>
-                                    <option v-for="(opt, idx) in field.options.split(',')" :key="idx">{{ opt }}</option>
-                                </select>
-                            </template>
-
-                            <template v-if="field.type === 'boolean'">
-                                <select disabled>
-                                    <option>Да</option>
-                                    <option>Нет</option>
-                                </select>
-                            </template>
-                            <template v-if="field.type === 'text'">
-                                <input disabled placeholder="Пример текста" />
-                            </template>
-                            <template v-if="field.type === 'number'">
-                                <input disabled type="number" placeholder="123" />
-                            </template>
-                            <template v-if="field.type === 'date'">
-                                <input disabled type="date" />
-                            </template>
+                            <input v-if="field.type === 'select'" v-model="field.options"
+                                placeholder="Варианты через запятую" />
+                            <input v-if="field.type === 'text'" disabled placeholder="Текст..." />
+                            <input v-if="field.type === 'number'" disabled type="number" placeholder="123" />
+                            <input v-if="field.type === 'date'" disabled type="date" />
+                            <select v-if="field.type === 'boolean'" disabled>
+                                <option>Да</option>
+                                <option>Нет</option>
+                            </select>
 
                             <input v-model="field.description" placeholder="Описание" />
                             <button @click="removeField(index)">×</button>
                         </div>
 
-                        <button class="add-field" @click="addField" v-if="!selectedEventId">Добавить новое поле</button>
+                        <button class="add-field" @click="addField">Добавить поле</button>
                     </div>
 
                     <div class="create_event">
-                        <button class="create" @click="submitEvent" :disabled="timeError">{{ selectedEventId ?
-                            'Отправить Изменения' : 'Отправить'
-                        }}</button>
+                        <button class="create" @click="submitEvent" :disabled="timeError">
+                            {{ selectedEventId ? 'Обновить' : 'Создать' }}
+                        </button>
                     </div>
                 </div>
 
@@ -163,11 +146,11 @@
                     <div class="event-sidebar-scroll">
                         <div class="upcoming-event" v-for="ev in upcomingEvents" :key="ev.id" @click="selectEvent(ev)"
                             :class="{ active: selectedEventId === ev.id }">
-                            <p class="side_name">{{ ev.eventName }}</p>
-                            <p class="side_name"> Дата начала: {{ formatDate(ev.startDateAndTime) }}</p>
+                            <p>{{ ev.eventName }}</p>
+                            <p>Дата: {{ formatDate(ev.startDateAndTime) }}</p>
                         </div>
                     </div>
-                    <button class="submit-btn" @click="resetForm">Создать мероприятие</button>
+                    <button class="submit-btn" @click="resetForm">Новое мероприятие</button>
                 </div>
             </div>
         </div>
@@ -175,34 +158,24 @@
 </template>
 
 <script setup>
-import NavBar from '@/components/nav_bar.vue'
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import api from '@/utils/axios'
-import { onMounted } from 'vue'
-import { computed } from 'vue'
+import NavBar from '@/components/nav_bar.vue'
 
 const imageFile = ref(null)
 const imagePreview = ref('')
 const suggestions = ref([])
-const formatDate = dateStr => new Date(dateStr).toLocaleDateString()
 const fieldMode = ref('participant')
-const isEditing = ref(false)
-const isEditMode = ref(false)
 const selectedEventId = ref(null)
-const editedEvent = ref(null)
-
-const visibleFieldModes = computed(() => {
-    if (event.value.grouping === 'Только соло') return ['participant']
-    if (event.value.grouping === 'Только группы') return ['group']
-    return ['participant', 'group'] // Группы и соло
-})
+const upcomingEvents = ref([])
 
 const event = ref({
     title: '',
     description: '',
     date: '',
     time: '',
+    endTime: '',
     maxParticipants: '',
     location: '',
     grouping: 'Группы и соло',
@@ -212,116 +185,68 @@ const event = ref({
         group: []
     }
 })
-const upcomingEvents = ref([])
+
+const visibleFieldModes = computed(() => {
+    if (event.value.grouping === 'Только соло') return ['participant']
+    if (event.value.grouping === 'Только группы') return ['group']
+    return ['participant', 'group']
+})
 
 const getUserIdFromToken = () => {
-    const token = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('jwt='))?.split('=')[1]
+    const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
     if (!token) return null
     try {
         const payload = JSON.parse(atob(token.split('.')[1]))
         return payload.sub || payload.userId
-    } catch (e) {
-        console.error('JWT decode error', e)
+    } catch {
         return null
     }
 }
 
-onMounted(async () => {
+const formatDate = str => new Date(str).toLocaleDateString()
+
+const loadEvents = async () => {
     const userId = getUserIdFromToken()
     if (!userId) return
-
     try {
         const res = await api.get(`/events/creator/${userId}`)
         upcomingEvents.value = res.data || []
-    } catch (e) {
-        console.error('Ошибка при получении событий:', e)
+    } catch (err) {
+        console.error('Ошибка загрузки мероприятий', err)
     }
-})
+}
+
+onMounted(loadEvents)
+
+const isValidImageFormat = (file) => {
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    return validTypes.includes(file.type)
+}
 
 const handleImageUpload = (e) => {
     const file = e.target.files[0]
-    if (file) {
-        imageFile.value = file
-        const reader = new FileReader()
-        reader.onload = () => {
-            imagePreview.value = reader.result
-        }
-        reader.readAsDataURL(file)
-    }
-}
+    if (!file) return
 
-const addField = () => {
-    event.value.fields[fieldMode.value].push({ label: '', type: 'text', options: '', description: '' })
-}
-
-const removeField = (index) => {
-    if (selectedEventId.value && editedEvent.value) {
-        editedEvent.value.fields[fieldMode.value].splice(index, 1)
-    } else {
-        event.value.fields[fieldMode.value].splice(index, 1)
-    }
-}
-
-const timeError = computed(() => {
-    if (!event.value.time || !event.value.endTime) return false
-    console.log(event.value.endTime)
-    return event.value.endTime <= event.value.time
-})
-
-const submitEvent = async () => {
-    console.log(event.value.endTime)
-    const userId = getUserIdFromToken()
-    if (!userId) {
-        console.warn('Пользователь не авторизован')
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Размер файла не должен превышать 5MB')
         return
     }
 
-    const now = new Date().toLocaleString('sv-SE').replace(' ', 'T')
-
-    const payload = {
-        eventName: event.value.title,
-        creatorId: userId,
-        description: event.value.description,
-        image: imageFile.value ? imageFile.value.name : 'string', // или загрузи на s3 и вставь ссылку
-        online: event.value.format === 'online',
-        createDate: now,
-        startDateAndTime: `${event.value.date}T${event.value.time}:00`,
-        endDateAndTime: `${event.value.date}T${event.value.endTime}:00`, // или отдельно выбери время конца
-        maxParticipantNumber: Number(event.value.maxParticipants),
-        currentParticipantQuantity: 0,
-        eventAddress: event.value.location,
-        isRecurring: false,
-        qrCode: 'string',
-        grouping: event.value.grouping,
-        fields: event.value.fields
+    if (!isValidImageFormat(file)) {
+        alert('Пожалуйста, загрузите изображение в формате JPG, PNG, GIF или WebP')
+        return
     }
 
-    if (selectedEventId.value) {
-        try {
-            await api.patch(`/event/${selectedEventId.value}`, payload)
-            console.log('Успешно обновлено:', payload)
-            alert('Мероприятие успешно обновлено!');
-            resetForm();
-            onMounted();
-        } catch (err) {
-            console.error('Ошибка обновления:', err)
-            alert('Ошибка при обновлении мероприятия');
-        }
-
-    } else {
-        try {
-            const res = await api.post('/event', payload)
-            console.log('Успешно отправлено:', res.data)
-            alert('Мероприятие успешно создано!');
-            resetForm();
-            onMounted();
-        } catch (err) {
-            console.error('Ошибка отправки:', err)
-            alert('Ошибка при создании мероприятия');
-        }
+    imageFile.value = file
+    const reader = new FileReader()
+    reader.onload = () => {
+        imagePreview.value = reader.result
     }
+    reader.onerror = () => {
+        alert('Ошибка при чтении файла')
+        imagePreview.value = ''
+    }
+    reader.readAsDataURL(file)
 }
 
 const handleAddressInput = async () => {
@@ -339,52 +264,243 @@ const handleAddressInput = async () => {
         )
         suggestions.value = res.data.suggestions || []
     } catch (err) {
-        console.error('Ошибка подсказки адреса:', err)
+        console.error('Ошибка при получении подсказок', err)
     }
 }
 
-const selectSuggestion = (suggestion) => {
+const selectSuggestion = suggestion => {
     event.value.location = suggestion.value
     suggestions.value = []
 }
 
+const addField = () => {
+    event.value.fields[fieldMode.value].push({ label: '', type: 'text', options: '', description: '' })
+}
+
+const removeField = index => {
+    event.value.fields[fieldMode.value].splice(index, 1)
+}
+
+const timeError = computed(() => {
+    const start = event.value.time
+    const end = event.value.endTime
+    if (!start || !end) return false
+    return end <= start
+})
+
+const uploadToS3 = async (eventId) => {
+    if (!imageFile.value) return
+
+    try {
+        const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
+        if (!token) {
+            alert('Необходимо авторизоваться')
+            window.location.href = '/login'
+            return
+        }
+
+        if (!(imageFile.value instanceof File)) {
+            throw new Error('Некорректный файл')
+        }
+
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(eventId)) {
+            throw new Error('Некорректный ID события')
+        }
+
+        const formData = new FormData()
+        formData.append('file', imageFile.value)
+        formData.append('uploaded_by', getUserIdFromToken())
+        formData.append('entity_type', 'EVENT')
+        formData.append('entity_id', eventId)
+
+        console.log('FormData содержимое:')
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + (pair[1] instanceof File ? pair[1].name : pair[1]))
+        }
+
+        const headers = {
+            'Content-Type': 'multipart/form-data',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`
+        }
+
+        console.log('Отправка запроса с заголовками:', headers)
+
+        const res = await api.post('/storage/upload', formData, {
+            headers,
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                console.log(`Загрузка: ${percentCompleted}%`)
+            },
+            timeout: 30000
+        })
+
+        console.log('Ответ сервера:', res.data)
+
+        if (!res.data?.s3_url) {
+            console.error('Неверный формат ответа:', res.data)
+            throw new Error('URL изображения не получен')
+        }
+
+        const s3Url = res.data.s3_url
+        imagePreview.value = s3Url
+        event.value.image = s3Url
+
+        const updateRes = await api.patch(`/event/${eventId}`, {
+            event: { image: s3Url }
+        })
+
+        console.log('Обновление события:', updateRes.data)
+        return s3Url
+    } catch (err) {
+        console.error('Ошибка загрузки в S3:', {
+            message: err.message,
+            response: err.response?.data,
+            status: err.response?.status,
+            headers: err.response?.headers,
+            config: {
+                url: err.config?.url,
+                method: err.config?.method,
+                headers: err.config?.headers,
+                data: err.config?.data instanceof FormData ? 'FormData' : err.config?.data
+            }
+        })
+
+        if (err.response?.status === 401) {
+            alert('Сессия истекла. Перенаправление на страницу входа...')
+            window.location.href = '/login'
+        } else if (err.response?.status === 413) {
+            alert('Файл слишком большой. Максимальный размер: 5MB')
+        } else if (err.response?.status === 415) {
+            alert('Неподдерживаемый формат файла. Пожалуйста, используйте JPG, PNG или GIF')
+        } else if (err.response?.status === 500) {
+            alert('Ошибка сервера при загрузке изображения. Пожалуйста, попробуйте загрузить изображение меньшего размера или в другом формате.')
+        } else {
+            alert('Ошибка при загрузке изображения. Пожалуйста, попробуйте еще раз или выберите другое изображение.')
+        }
+        throw err
+    }
+}
+
+const submitEvent = async () => {
+    const userId = getUserIdFromToken()
+    if (!userId) {
+        alert('Необходимо авторизоваться')
+        window.location.href = '/login'
+        return
+    }
+
+    try {
+        const now = new Date().toISOString().slice(0, 19)
+
+        const flattenedFields = [
+            ...(event.value.fields?.participant || []).map(f => ({ ...f, forTeam: false })),
+            ...(event.value.fields?.group || []).map(f => ({ ...f, forTeam: true }))
+        ]
+
+        const payload = {
+            eventName: event.value.title,
+            creatorId: userId,
+            description: event.value.description,
+            image: 'string',
+            online: event.value.format === 'online',
+            createDate: now,
+            startDateAndTime: `${event.value.date}T${event.value.time}:00`,
+            endDateAndTime: `${event.value.date}T${event.value.endTime}:00`,
+            maxParticipantNumber: Number(event.value.maxParticipants),
+            currentParticipantQuantity: 0,
+            eventAddress: event.value.location,
+            isRecurring: false,
+            qrCode: 'string',
+            grouping: event.value.grouping,
+            fields: flattenedFields
+        }
+
+        console.log('Отправка события:', payload)
+
+        let newId
+        if (selectedEventId.value) {
+            const updateRes = await api.patch(`/event/${selectedEventId.value}`, { event: payload })
+            console.log('Обновление события:', updateRes.data)
+            newId = selectedEventId.value
+        } else {
+            const createRes = await api.post('/event', payload)
+            console.log('Создание события:', createRes.data)
+            newId = createRes.data?.id
+        }
+
+        if (newId && imageFile.value) {
+            await uploadToS3(newId)
+        }
+
+        alert(selectedEventId.value ? 'Мероприятие успешно обновлено!' : 'Мероприятие успешно создано!')
+        await loadEvents()
+        resetForm()
+    } catch (err) {
+        console.error('Ошибка при сохранении мероприятия:', {
+            message: err.message,
+            response: err.response?.data,
+            status: err.response?.status
+        })
+
+        if (err.response?.status === 401) {
+            alert('Сессия истекла. Перенаправление на страницу входа...')
+            window.location.href = '/login'
+        } else {
+            alert('Ошибка при создании или обновлении мероприятия. Пожалуйста, проверьте все поля и попробуйте снова.')
+        }
+    }
+}
+
 const selectEvent = async (ev) => {
+    if (selectedEventId.value === ev.id) return
     selectedEventId.value = ev.id
-    isEditMode.value = true
-    isEditing.value = false
     try {
         const res = await api.get(`/event/${ev.id}`)
         const data = res.data
+        const fields = {
+            participant: [],
+            group: []
+        }
+
+        for (const f of data.fields || []) {
+            if (f.forTeam) {
+                fields.group.push(f)
+            } else {
+                fields.participant.push(f)
+            }
+        }
+
         event.value = {
             title: data.eventName,
             description: data.description,
-            date: data.startDateAndTime?.split('T')[0] || '',
-            time: data.startDateAndTime?.split('T')[1]?.slice(0, 5) || '',
-            endTime: data.endDateAndTime?.split('T')[1]?.slice(0, 5) || '',
+            date: data.startDateAndTime.split('T')[0],
+            time: data.startDateAndTime.split('T')[1].slice(0, 5),
+            endTime: data.endDateAndTime.split('T')[1].slice(0, 5),
             maxParticipants: data.maxParticipantNumber,
             location: data.eventAddress,
-            grouping: data.grouping || 'Группы и соло',
+            grouping: data.grouping,
             format: data.online ? 'online' : 'offline',
-            fields: data.fields || { participant: [], group: [] }
+            fields
         }
+
         imagePreview.value = data.image || ''
-        editedEvent.value = { ...event.value }
-    } catch (e) {
-        console.error('Ошибка загрузки мероприятия:', e)
-        alert('Ошибка при загрузке мероприятия');
+    } catch (err) {
+        console.error('Ошибка загрузки события', err)
     }
 }
 
 const resetForm = () => {
-    selectedEventId.value = null;
-    isEditMode.value = false;
-    isEditing.value = false;
-    editedEvent.value = null;
+    selectedEventId.value = null
+    imageFile.value = null
+    imagePreview.value = ''
+    suggestions.value = []
     event.value = {
         title: '',
         description: '',
         date: '',
         time: '',
+        endTime: '',
         maxParticipants: '',
         location: '',
         grouping: 'Группы и соло',
@@ -393,14 +509,12 @@ const resetForm = () => {
             participant: [],
             group: []
         }
-    };
-    imageFile.value = null;
-    imagePreview.value = '';
-    suggestions.value = [];
-    fieldMode.value = 'participant';
-};
-
+    }
+    fieldMode.value = 'participant'
+}
 </script>
+
+
 
 <style scoped>
 .group_or_solo {

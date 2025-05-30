@@ -5,52 +5,41 @@
       <div class="main-content">
         <div class="stats-header">
           <h3>Статистика мероприятий</h3>
-          <a href="" class="edit-button">
-            <img src="@/assets/login_icons/redact.png" alt="edit" class="imge" />
-          </a>
         </div>
-        <input class="event-title" :value="eventTitle" disabled />
 
-        <div class="chart-section">
-          <div class="donut-chart">
-            <div class="donut-center"></div>
-          </div>
-          <div class="legend">
-            <div class="legend-item"><span class="dot yellow"></span>Среднее</div>
-            <div class="legend-item"><span class="dot green"></span>Высшее</div>
-            <div class="legend-item"><span class="dot pink"></span>Раковое</div>
-          </div>
-        </div>
+        <input class="event-title" :value="eventTitle" disabled />
 
         <div class="chart-field-selector">
           <label>Показать статистику по полю:</label>
           <select v-model="selectedField">
-            <option v-for="field in availableFields" :key="field" :value="field">
-              {{ field }}
+            <option v-for="field in availableFields" :key="field.label" :value="field">
+              {{ field.label }}
             </option>
           </select>
         </div>
 
         <div class="view-switch">
-          <input type="radio" id="view-single" value="single" v-model="viewMode">
-          <label for="view-single">
-            <img src="@/assets/icons/user.png" alt="User" />
-          </label>
-          <input type="radio" id="view-group" value="group" v-model="viewMode">
-          <label for="view-group">
-            <img src="@/assets/icons/stats.png" alt="Group" />
-          </label>
+          <input type="radio" id="view-single" value="single" v-model="viewMode" />
+          <label for="view-single"><img src="@/assets/icons/user.png" alt="User" /></label>
+          <input type="radio" id="view-group" value="group" v-model="viewMode" />
+          <label for="view-group"><img src="@/assets/icons/stats.png" alt="Group" /></label>
+        </div>
+
+        <div class="analytics-section" v-if="answers.length && selectedField">
+          <h4>Аналитика по полю "{{ selectedField.label }}"</h4>
+          <ul>
+            <li v-for="(value, i) in aggregatedAnswers" :key="i">{{ value.option }} — {{ value.count }}</li>
+          </ul>
         </div>
 
         <div class="participants-box">
           <h3>Участвуют</h3>
-
           <template v-if="viewMode === 'single'">
             <div class="participant" v-for="(p, i) in participants" :key="i">
               <div class="avatar"></div>
               <span class="name">{{ p.name }}</span>
               <span class="email">{{ p.email }}</span>
-              <button class="more-options">...</button>
+              <button @click="removeParticipant(p.participantId)">Удалить</button>
             </div>
           </template>
 
@@ -61,7 +50,6 @@
                 <div class="avatar"></div>
                 <span class="name">{{ p.name }}</span>
                 <span class="email">{{ p.email }}</span>
-                <button class="more-options">...</button>
               </div>
             </div>
           </template>
@@ -71,8 +59,7 @@
       <div class="sidebar_2">
         <div class="sidebar_2_scroll">
           <h4 class="tile_sidebar">Мои мероприятия</h4>
-          <div class="event-item" v-for="event in userEvents" :key="event.id" @click="selectEvent(event)"
-            :class="{ active: selectedEvent && selectedEvent.id === event.id }">
+          <div class="event-item" v-for="event in userEvents" :key="event.id" @click="selectEvent(event)" :class="{ active: selectedEvent && selectedEvent.id === event.id }">
             <p>{{ event.eventName }}</p>
             <p>Дата начала: {{ formatDateSafe(event.startDateAndTime) }}</p>
           </div>
@@ -83,84 +70,24 @@
   </div>
 </template>
 
+
 <script setup>
 import NavBar from '@/components/nav_bar.vue'
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import api from '@/utils/axios'
 
-const selectEvent = async (event) => {
-  selectedEvent.value = event
-  eventTitle.value = event.eventName
-  availableFields.value = event.fields || []
-
-  try {
-    const res = await api.get(`/participants/${event.id}`)
-    const rawParticipants = res.data || []
-
-    // Получаем данные о пользователях по userId
-    const detailed = await Promise.all(
-      rawParticipants.map(async (p) => {
-        try {
-          const userRes = await api.get(`/users/${p.userId}`)
-          return {
-            name: userRes.data.name || 'Без имени',
-            email: userRes.data.email || 'Нет email'
-          }
-        } catch {
-          return { name: 'Ошибка', email: 'Ошибка' }
-        }
-      })
-    )
-
-    participants.value = detailed
-  } catch (err) {
-    console.error('Ошибка при загрузке участников:', err)
-  }
-}
-
-
 const viewMode = ref('single')
-const selectedField = ref('')
+const selectedField = ref(null)
 const availableFields = ref([])
-const eventTitle = ref('')
-const events = ref([])
-const selectedEvent = ref(null)
-const createdEvents = ref([])
+const answers = ref([])
 const participants = ref([])
 const groupedParticipants = ref([])
-
-
+const selectedEvent = ref(null)
+const eventTitle = ref('')
 const userEvents = ref([])
-const formatDateSafe = (value) => {
-  const date = new Date(value)
-  return isNaN(date) ? 'Дата недоступна' : date.toLocaleDateString()
-}
-
-
-watch(viewMode, async (val) => {
-  if (val === 'group' && selectedEvent.value) {
-    try {
-      const res = await api.get(`/teams/${selectedEvent.value.id}`)
-      groupedParticipants.value = res.data
-      console.log(groupedParticipants)
-    } catch (err) {
-      console.error('Ошибка при загрузке команд:', err)
-    }
-  }
-})
-
-watch(selectedField, async (val) => {
-  if (val) {
-    const res = await api.get(`/statistics?field=${val}`)
-    // Здесь ты можешь обработать данные и отрисовать график
-    console.log('Статистика по полю', val, res.data)
-  }
-})
 
 const getUserIdFromToken = () => {
-  const token = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('jwt='))?.split('=')[1]
+  const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
   if (!token) return null
   try {
     const payload = JSON.parse(atob(token.split('.')[1]))
@@ -171,31 +98,105 @@ const getUserIdFromToken = () => {
   }
 }
 
-onMounted(async () => {
-  const userId = getUserIdFromToken()
-  if (!userId) return
+const formatDateSafe = (val) => {
+  const date = new Date(val)
+  return isNaN(date) ? 'Дата недоступна' : date.toLocaleDateString()
+}
+
+const selectEvent = async (event) => {
+  selectedEvent.value = event
+  eventTitle.value = event.eventName
+  availableFields.value = [...(event.fields?.participant || []), ...(event.fields?.group || [])]
+  await loadParticipants(event.id)
+  await loadAnswers(event.id)
+}
+
+const loadParticipants = async (eventId) => {
   try {
-    // ✅ Получаем мероприятия, СОЗДАННЫЕ пользователем
-    const eventsRes = await api.get(`/events/creator/${userId}`)
-    userEvents.value = eventsRes.data || []
-    console.log("USEREVENTS", userEvents)
-    if (!userEvents.length) {
-      console.warn('У пользователя нет созданных мероприятий')
-      return
+    const res = await api.get(`/participants/${eventId}`)
+    const raw = res.data || []
+    participants.value = await Promise.all(
+      raw.map(async (p) => {
+        try {
+          const u = await api.get(`/users/${p.userId}`)
+          return { name: u.data.name, email: u.data.email, participantId: p.id }
+        } catch {
+          return { name: 'Ошибка', email: 'Ошибка', participantId: p.id }
+        }
+      })
+    )
+  } catch (e) {
+    console.error('Ошибка загрузки участников:', e)
+  }
+}
+
+const loadAnswers = async (eventId) => {
+  try {
+    const res = await api.get(`/responses/event/${eventId}`)
+    answers.value = res.data || []
+  } catch (e) {
+    console.error('Ошибка при получении ответов:', e)
+  }
+}
+
+const removeParticipant = async (participantId) => {
+  if (!confirm('Удалить участника?')) return
+  try {
+    await api.delete(`/participants/${participantId}`)
+    participants.value = participants.value.filter(p => p.participantId !== participantId)
+  } catch (e) {
+    console.error('Ошибка при удалении:', e)
+  }
+}
+
+watch(viewMode, async (val) => {
+  if (val === 'group' && selectedEvent.value) {
+    try {
+      const res = await api.get(`/teams/${selectedEvent.value.id}`)
+      groupedParticipants.value = res.data || []
+    } catch (e) {
+      console.error('Ошибка загрузки команд:', e)
     }
-
-    const selected = userEvents[0]
-    selectedEvent.value = selected
-    eventTitle.value = selected.eventName
-    availableFields.value = selected.fields || []
-
-
-  } catch (err) {
-    console.error('Ошибка инициализации:', err)
   }
 })
 
+watch(selectedField, async (field) => {
+  if (!field || !selectedEvent.value) return
+  await loadAnswers(selectedEvent.value.id)
+})
+
+const aggregatedAnswers = computed(() => {
+  if (!selectedField.value || !answers.value.length) return []
+
+  const fieldKey = selectedField.value.label
+  const map = new Map()
+
+  answers.value.forEach(resp => {
+    const val = resp.responses?.[fieldKey]
+    if (!val) return
+    map.set(val, (map.get(val) || 0) + 1)
+  })
+
+  return Array.from(map.entries()).map(([option, count]) => ({ option, count }))
+})
+
+onMounted(async () => {
+  const userId = getUserIdFromToken()
+  if (!userId) return
+
+  try {
+    const res = await api.get(`/events/creator/${userId}`)
+    userEvents.value = res.data || []
+    if (userEvents.value.length) await selectEvent(userEvents.value[0])
+  } catch (e) {
+    console.error('Ошибка инициализации:', e)
+  }
+})
 </script>
+
+
+
+
 
 <style scoped>
 .chart-field-selector {

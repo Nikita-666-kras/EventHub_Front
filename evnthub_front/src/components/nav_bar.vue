@@ -15,7 +15,7 @@
       </div>
     </div>
     <div class="bottom-icon">
-      <router-link to="/setings"><img src="@/assets/icons/settings.png" alt="Settings" /></router-link>
+      <router-link to="/settings"><img src="@/assets/icons/settings.png" alt="Settings" /></router-link>
       <!-- <img src="@/assets/icons/theme-toggle.svg" alt="Theme toggle" /> -->
     </div>
   </aside>

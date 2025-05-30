@@ -6,6 +6,13 @@
             <div class="event-header slide-in">
                 <div class="left">
                     <img class="banner" :src="event.image" alt="Event image" />
+                    <div class="right">
+                        <h2 class="title">{{ event.eventName }}</h2>
+                        <div class="creator">
+                            <img class="creator-avatar" src="@/assets/icons/user_black.png" />
+                            <p>{{ creator.name }}</p>
+                        </div>
+                    </div>
 
                     <div class="date-location">
                         <div class="date">
@@ -42,13 +49,7 @@
                     <button class="register-btn" @click="register">Зарегистрироваться</button>
                 </div>
 
-                <div class="right">
-                    <h2 class="title">{{ event.eventName }}</h2>
-                    <div class="creator">
-                        <img class="creator-avatar" src="@/assets/icons/user_black.png" />
-                        <p>{{ creator.name }}</p>
-                    </div>
-                </div>
+
             </div>
 
             <div class="event-content">
@@ -72,6 +73,11 @@ import NavBar from '@/components/nav_bar.vue'
 const route = useRoute()
 const event = ref({})
 const creator = ref({})
+
+
+
+console.log(event)
+
 
 onMounted(async () => {
     const eventId = route.params.id
@@ -161,6 +167,7 @@ const register = async () => {
     align-items: center;
     background: #222;
     padding: 2rem;
+    margin: 1rem 0;
     border-radius: 12px;
     border: 1px solid #333;
     height: fit-content;
@@ -231,6 +238,7 @@ const register = async () => {
     line-height: 1.6;
     border: 1px solid #333;
     transition: all 0.3s ease;
+    
 }
 
 .description:hover {

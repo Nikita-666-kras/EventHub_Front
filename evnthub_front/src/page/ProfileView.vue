@@ -1,21 +1,41 @@
 <template>
   <div class="profile-layout">
     <NavBar />
+    <div v-if="toast.visible" :class="['toast', toast.type]">
+      {{ toast.message }}
+    </div>
 
     <div class="content">
       <div class="profile-card">
         <div class="profile-header">
           <p class="section-title">Профиль</p>
           <div class="actions">
-            <img src="@/assets/login_icons/push.png" alt="" class="imge">
+            <img src="@/assets/login_icons/push.png" alt="Уведомления" class="imge" @click="toggleInvitesPopup" />
             <img src="@/assets/login_icons/redact.png" alt="Редактировать" class="imge" @click="startEdit"
-              v-if="!isEditing" style="cursor:pointer;">
+              v-if="!isEditing" />
+            <div v-if="invitesPopupVisible" class="invites-popup">
+              <h4>Приглашения в команды</h4>
+              <div v-if="teamInvites.length === 0">Нет приглашений</div>
+              <div v-for="invite in teamInvites" :key="invite.id" class="invite-card">
+                <p>Команда: {{ invite.teamName || invite.teamId }}</p>
+                <div class="buttons">
+                  <button @click="respondToInvite(invite.id, 'APPROVED')">Принять</button>
+                  <button @click="respondToInvite(invite.id, 'REJECTED')">Отклонить</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="profile-info">
           <div class="left">
-            <div class="avatar"></div>
+            <label v-if="isEditing" for="avatarInput">
+              <div class="avatar clickable" :style="avatarPreview ? { backgroundImage: `url('${avatarPreview}')` } : {}"
+                title="Нажмите, чтобы выбрать изображение"></div>
+            </label>
+            <div v-else class="avatar" :style="avatarPreview ? { backgroundImage: `url('${avatarPreview}')` } : {}">
+            </div>
+            <input id="avatarInput" type="file" accept="image/*" hidden @change="handleAvatarUpload" />
           </div>
           <div class="right">
             <div class="field-row"><span class="label">Фамилия:</span>
@@ -120,8 +140,82 @@ const upcomingEvents = ref([])
 
 const isEditing = ref(false)
 const editedUser = ref({})
+const invitesPopupVisible = ref(false)
+const teamInvites = ref([])
+
+
+const avatarFile = ref(null)
+const avatarPreview = ref('')
+
+const handleAvatarUpload = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  avatarFile.value = file
+  const reader = new FileReader()
+  reader.onload = () => (avatarPreview.value = reader.result)
+  reader.readAsDataURL(file)
+}
+
+const uploadAvatarToS3 = async (userId) => {
+  if (!avatarFile.value) return
+
+  const formData = new FormData()
+  formData.append('file', avatarFile.value)
+  formData.append('uploaded_by', userId)
+  formData.append('entity_type', 'USER')
+  formData.append('entity_id', userId)
+
+  try {
+    await api.post('/storage/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    showToast('Аватар обновлён', 'success')
+  } catch (err) {
+    console.error('Ошибка загрузки аватара:', err)
+    showToast('Ошибка загрузки аватара', 'error')
+  }
+}
+
+const updateAvatarPreview = (userId) => {
+  avatarPreview.value = `${import.meta.env.VITE_API_URL}/api/files/avatar/user/${userId}`
+}
+
 
 const formatDate = (iso) => new Date(iso).toLocaleString()
+
+const toast = ref({ visible: false, message: '', type: 'info' })
+
+const showToast = (msg, type = 'info') => {
+  toast.value = { visible: true, message: msg, type }
+  setTimeout(() => {
+    toast.value.visible = false
+  }, 4000)
+}
+
+const respondToInvite = async (inviteId, status) => {
+  try {
+    await api.patch(`/teams/invites/${inviteId}/status`, { status })
+    teamInvites.value = teamInvites.value.filter(i => i.id !== inviteId)
+    showToast(`Приглашение ${status === 'APPROVED' ? 'принято' : 'отклонено'}`, 'success')
+  } catch (e) {
+    showToast('Ошибка при ответе на приглашение', 'error')
+  }
+}
+
+
+const toggleInvitesPopup = () => {
+  invitesPopupVisible.value = !invitesPopupVisible.value
+}
+
+const loadTeamInvites = async (userId) => {
+  try {
+    const res = await api.get(`/teams/invites/by-participant/${userId}`)
+    teamInvites.value = res.data || []
+  } catch (e) {
+    console.error('Ошибка загрузки приглашений:', e)
+  }
+}
+
 
 const getUserIdFromToken = () => {
   const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
@@ -146,14 +240,21 @@ const cancelEdit = () => {
 const saveEdit = async () => {
   const userId = getUserIdFromToken()
   if (!userId) return
+
   try {
     await api.patch('/users', { ...editedUser.value, id: userId })
     user.value = { ...editedUser.value }
     isEditing.value = false
+    showToast('Профиль успешно сохранён', 'success')
+
+    await uploadAvatarToS3(userId)
   } catch (e) {
-    alert('Ошибка при сохранении профиля')
+    showToast('Ошибка при сохранении профиля', 'error')
   }
 }
+
+
+
 
 onMounted(async () => {
   const userId = getUserIdFromToken()
@@ -162,6 +263,7 @@ onMounted(async () => {
   try {
     const userRes = await api.get(`/users/${userId}`)
     user.value = userRes.data
+    updateAvatarPreview(userId)
 
     const eventsRes = await api.get(`/events/participant/${userId}`)
     const allEvents = eventsRes.data || []
@@ -170,13 +272,104 @@ onMounted(async () => {
     soloEvents.value = allEvents.filter(e => new Date(e.endDateAndTime) < now && e.grouping === 'solo')
     groupEvents.value = allEvents.filter(e => new Date(e.endDateAndTime) < now && e.grouping === 'group')
     upcomingEvents.value = allEvents.filter(e => new Date(e.startDateAndTime) >= now)
+
+    await loadTeamInvites(userId) // <== вот сюда передай userId
   } catch (e) {
     console.error('Ошибка загрузки данных:', e)
   }
 })
+
 </script>
 
 <style scoped>
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 30px;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  z-index: 9999;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  animation: fadeInOut 0.4s ease;
+}
+
+.toast.success {
+  background-color: #10b981;
+  /* зелёный */
+}
+
+.toast.error {
+  background-color: #ef4444;
+  /* красный */
+}
+
+.toast.info {
+  background-color: #3b82f6;
+  /* синий */
+}
+
+@keyframes fadeInOut {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+.avatar.clickable {
+  cursor: pointer;
+  border-color: #3b82f6;
+}
+
+
+.invites-popup {
+  position: absolute;
+  top: 2.5rem;
+  right: 2.5rem;
+  background: #333;
+  border: 1px solid #555;
+  padding: 1rem;
+  border-radius: 12px;
+  width: 300px;
+  z-index: 1000;
+  color: white;
+}
+
+.invite-card {
+  background: #444;
+  padding: 0.8rem;
+  border-radius: 8px;
+  margin-top: 0.8rem;
+}
+
+.invite-card .buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.6rem;
+}
+
+.invite-card button {
+  background: #9333ea;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+.invite-card button:hover {
+  background: #7e22ce;
+}
+
+
+
 .profile-layout {
   min-height: 100vh;
   margin-left: 80px;
@@ -224,6 +417,7 @@ onMounted(async () => {
 
 .actions {
   display: flex;
+  position: relative;
   gap: 1rem;
 }
 
