@@ -26,7 +26,9 @@
                             <label>Дата</label>
                             <div class="time-item">
                                 <span class="time-label">дата начала мероприятия</span>
-                                <input type="date" v-model="event.date" />
+                                <input type="date" v-model="event.date" :min="minDate" :max="maxDate"
+                                    @input="validateDate" />
+                                <p v-if="dateError" class="error-text">{{ dateError }}</p>
                             </div>
                         </div>
                         <div class="form-group">
@@ -288,11 +290,39 @@ const timeError = computed(() => {
     return end <= start
 })
 
+const refreshToken = async () => {
+    try {
+        const refreshToken = document.cookie.split('; ').find(row => row.startsWith('refresh_token='))?.split('=')[1]
+        if (!refreshToken) {
+            throw new Error('No refresh token found')
+        }
+
+        const res = await api.post('/auth/refresh', { refresh_token: refreshToken })
+        if (res.data?.access_token) {
+            document.cookie = `jwt=${res.data.access_token}; path=/`
+            return res.data.access_token
+        }
+        throw new Error('No access token in response')
+    } catch (err) {
+        console.error('Error refreshing token:', err)
+        window.location.href = '/login'
+        throw err
+    }
+}
+
+const getValidToken = async () => {
+    const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
+    if (!token) {
+        return await refreshToken()
+    }
+    return token
+}
+
 const uploadToS3 = async (eventId) => {
     if (!imageFile.value) return
 
     try {
-        const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
+        const token = await getValidToken()
         if (!token) {
             alert('Необходимо авторизоваться')
             window.location.href = '/login'
@@ -307,6 +337,7 @@ const uploadToS3 = async (eventId) => {
             throw new Error('Некорректный ID события')
         }
 
+        // Создаем FormData для загрузки файла
         const formData = new FormData()
         formData.append('file', imageFile.value)
         formData.append('uploaded_by', getUserIdFromToken())
@@ -326,6 +357,7 @@ const uploadToS3 = async (eventId) => {
 
         console.log('Отправка запроса с заголовками:', headers)
 
+        // Загружаем файл
         const res = await api.post('/storage/upload', formData, {
             headers,
             onUploadProgress: (progressEvent) => {
@@ -346,8 +378,32 @@ const uploadToS3 = async (eventId) => {
         imagePreview.value = s3Url
         event.value.image = s3Url
 
+        // Получаем информацию о загруженном файле
+        const fileInfoRes = await api.get(`/storage/file-info/${res.data.file_id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+        console.log('Информация о файле:', fileInfoRes.data)
+
+        // Получаем текущие данные события
+        const eventRes = await api.get(`/event/${eventId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+        console.log('Текущие данные события:', eventRes.data)
+
+        // Обновляем событие с новым URL изображения
         const updateRes = await api.patch(`/event/${eventId}`, {
-            event: { image: s3Url }
+            event: {
+                ...eventRes.data,
+                image: s3Url
+            }
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
         })
 
         console.log('Обновление события:', updateRes.data)
@@ -367,8 +423,14 @@ const uploadToS3 = async (eventId) => {
         })
 
         if (err.response?.status === 401) {
-            alert('Сессия истекла. Перенаправление на страницу входа...')
-            window.location.href = '/login'
+            try {
+                await refreshToken()
+                return await uploadToS3(eventId)
+            } catch (refreshErr) {
+                alert('Сессия истекла. Перенаправление на страницу входа...')
+                window.location.href = '/login'
+                throw refreshErr
+            }
         } else if (err.response?.status === 413) {
             alert('Файл слишком большой. Максимальный размер: 5MB')
         } else if (err.response?.status === 415) {
@@ -382,15 +444,50 @@ const uploadToS3 = async (eventId) => {
     }
 }
 
-const submitEvent = async () => {
-    const userId = getUserIdFromToken()
-    if (!userId) {
-        alert('Необходимо авторизоваться')
-        window.location.href = '/login'
-        return
-    }
+const minDate = computed(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+})
 
+const maxDate = computed(() => {
+    const maxDate = new Date()
+    maxDate.setFullYear(maxDate.getFullYear() + 1) // Максимум на год вперед
+    return maxDate.toISOString().split('T')[0]
+})
+
+const dateError = ref('')
+
+const validateDate = () => {
+    const selectedDate = new Date(event.value.date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (selectedDate < today) {
+        dateError.value = 'Дата не может быть в прошлом'
+        event.value.date = minDate.value
+    } else if (selectedDate > new Date(maxDate.value)) {
+        dateError.value = 'Дата не может быть позже чем через год'
+        event.value.date = maxDate.value
+    } else {
+        dateError.value = ''
+    }
+}
+
+const submitEvent = async () => {
     try {
+        validateDate()
+        if (dateError.value) {
+            alert('Пожалуйста, выберите корректную дату')
+            return
+        }
+
+        const token = await getValidToken()
+        if (!token) {
+            alert('Необходимо авторизоваться')
+            window.location.href = '/login'
+            return
+        }
+
         const now = new Date().toISOString().slice(0, 19)
 
         const flattenedFields = [
@@ -398,11 +495,64 @@ const submitEvent = async () => {
             ...(event.value.fields?.group || []).map(f => ({ ...f, forTeam: true }))
         ]
 
+        // Сначала загружаем изображение, если оно есть
+        let imageUrl = ''
+        if (imageFile.value) {
+            try {
+                // Создаем временное событие для получения ID
+                const tempPayload = {
+                    eventName: event.value.title,
+                    creatorId: getUserIdFromToken(),
+                    description: event.value.description || '',
+                    image: '',
+                    online: event.value.format === 'online',
+                    createDate: now,
+                    startDateAndTime: `${event.value.date}T${event.value.time}:00`,
+                    endDateAndTime: `${event.value.date}T${event.value.endTime}:00`,
+                    maxParticipantNumber: Number(event.value.maxParticipants),
+                    currentParticipantQuantity: 0,
+                    eventAddress: event.value.location,
+                    isRecurring: false,
+                    qrCode: 'string',
+                    grouping: event.value.grouping,
+                    fields: flattenedFields
+                }
+
+                let newId
+                if (selectedEventId.value) {
+                    const updateRes = await api.patch(`/event/${selectedEventId.value}`, { event: tempPayload }, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
+                    console.log('Обновление события:', updateRes.data)
+                    newId = selectedEventId.value
+                } else {
+                    const createRes = await api.post('/event', tempPayload, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
+                    console.log('Создание события:', createRes.data)
+                    newId = createRes.data?.id
+                }
+
+                if (newId) {
+                    imageUrl = await uploadToS3(newId)
+                }
+            } catch (uploadErr) {
+                console.error('Ошибка при загрузке изображения:', uploadErr)
+                alert('Ошибка при загрузке изображения. Пожалуйста, попробуйте еще раз.')
+                return
+            }
+        }
+
+        // Теперь создаем/обновляем событие с URL изображения
         const payload = {
             eventName: event.value.title,
-            creatorId: userId,
-            description: event.value.description,
-            image: 'string',
+            creatorId: getUserIdFromToken(),
+            description: event.value.description || '',
+            image: imageUrl || '',
             online: event.value.format === 'online',
             createDate: now,
             startDateAndTime: `${event.value.date}T${event.value.time}:00`,
@@ -418,19 +568,20 @@ const submitEvent = async () => {
 
         console.log('Отправка события:', payload)
 
-        let newId
         if (selectedEventId.value) {
-            const updateRes = await api.patch(`/event/${selectedEventId.value}`, { event: payload })
+            const updateRes = await api.patch(`/event/${selectedEventId.value}`, { event: payload }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
             console.log('Обновление события:', updateRes.data)
-            newId = selectedEventId.value
         } else {
-            const createRes = await api.post('/event', payload)
+            const createRes = await api.post('/event', payload, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
             console.log('Создание события:', createRes.data)
-            newId = createRes.data?.id
-        }
-
-        if (newId && imageFile.value) {
-            await uploadToS3(newId)
         }
 
         alert(selectedEventId.value ? 'Мероприятие успешно обновлено!' : 'Мероприятие успешно создано!')
@@ -444,8 +595,14 @@ const submitEvent = async () => {
         })
 
         if (err.response?.status === 401) {
-            alert('Сессия истекла. Перенаправление на страницу входа...')
-            window.location.href = '/login'
+            try {
+                await refreshToken()
+                return await submitEvent()
+            } catch (refreshErr) {
+                alert('Сессия истекла. Перенаправление на страницу входа...')
+                window.location.href = '/login'
+                throw refreshErr
+            }
         } else {
             alert('Ошибка при создании или обновлении мероприятия. Пожалуйста, проверьте все поля и попробуйте снова.')
         }
@@ -928,9 +1085,9 @@ select:focus {
 }
 
 .error-text {
-    margin-top: 0.5rem;
-    color: #f87171;
-    font-size: 0.85rem;
+    color: #ff4444;
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
     text-align: center;
 }
 

@@ -5,7 +5,9 @@
         <div class="event-details fade-in">
             <div class="event-header slide-in">
                 <div class="left">
-                    <img class="banner" :src="event.image" alt="Event image" />
+                    <div class="banner-container">
+                        <img class="banner" :src="event.image" alt="Event image" />
+                    </div>
                     <div class="right">
                         <h2 class="title">{{ event.eventName }}</h2>
                         <div class="creator">
@@ -143,7 +145,7 @@ const register = async () => {
 .event-details {
     display: flex;
     justify-content: space-between;
-    gap: 3rem;
+
     max-width: 1400px;
     margin: auto;
     background: #1a1a1a;
@@ -155,6 +157,8 @@ const register = async () => {
 }
 
 .left {
+    align-items: center;
+    justify-content: center;
     flex: 2;
     animation: slideInLeft 0.6s ease-out;
 }
@@ -174,9 +178,18 @@ const register = async () => {
     animation: slideInRight 0.6s ease-out;
 }
 
-.banner {
+.banner-container {
     width: 100%;
-    height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.banner {
+    max-width: 80%;
+    min-width: 300px;
+    min-height: 200px;
+    height: auto;
     object-fit: cover;
     border-radius: 12px;
     margin-bottom: 1.5rem;
@@ -238,7 +251,7 @@ const register = async () => {
     line-height: 1.6;
     border: 1px solid #333;
     transition: all 0.3s ease;
-    
+
 }
 
 .description:hover {
