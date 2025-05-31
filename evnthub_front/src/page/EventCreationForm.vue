@@ -490,69 +490,12 @@ const submitEvent = async () => {
 
         const now = new Date().toISOString().slice(0, 19)
 
-        const flattenedFields = [
-            ...(event.value.fields?.participant || []).map(f => ({ ...f, forTeam: false })),
-            ...(event.value.fields?.group || []).map(f => ({ ...f, forTeam: true }))
-        ]
-
-        // Сначала загружаем изображение, если оно есть
-        let imageUrl = ''
-        if (imageFile.value) {
-            try {
-                // Создаем временное событие для получения ID
-                const tempPayload = {
-                    eventName: event.value.title,
-                    creatorId: getUserIdFromToken(),
-                    description: event.value.description || '',
-                    image: '',
-                    online: event.value.format === 'online',
-                    createDate: now,
-                    startDateAndTime: `${event.value.date}T${event.value.time}:00`,
-                    endDateAndTime: `${event.value.date}T${event.value.endTime}:00`,
-                    maxParticipantNumber: Number(event.value.maxParticipants),
-                    currentParticipantQuantity: 0,
-                    eventAddress: event.value.location,
-                    isRecurring: false,
-                    qrCode: 'string',
-                    grouping: event.value.grouping,
-                    fields: flattenedFields
-                }
-
-                let newId
-                if (selectedEventId.value) {
-                    const updateRes = await api.patch(`/event/${selectedEventId.value}`, { event: tempPayload }, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    })
-                    console.log('Обновление события:', updateRes.data)
-                    newId = selectedEventId.value
-                } else {
-                    const createRes = await api.post('/event', tempPayload, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    })
-                    console.log('Создание события:', createRes.data)
-                    newId = createRes.data?.id
-                }
-
-                if (newId) {
-                    imageUrl = await uploadToS3(newId)
-                }
-            } catch (uploadErr) {
-                console.error('Ошибка при загрузке изображения:', uploadErr)
-                alert('Ошибка при загрузке изображения. Пожалуйста, попробуйте еще раз.')
-                return
-            }
-        }
-
-        // Теперь создаем/обновляем событие с URL изображения
+        // Создаем/обновляем событие
         const payload = {
             eventName: event.value.title,
             creatorId: getUserIdFromToken(),
             description: event.value.description || '',
-            image: imageUrl || '',
+            image: '',
             online: event.value.format === 'online',
             createDate: now,
             startDateAndTime: `${event.value.date}T${event.value.time}:00`,
@@ -561,13 +504,12 @@ const submitEvent = async () => {
             currentParticipantQuantity: 0,
             eventAddress: event.value.location,
             isRecurring: false,
-            qrCode: 'string',
-            grouping: event.value.grouping,
-            fields: flattenedFields
+            qrCode: 'string'
         }
 
         console.log('Отправка события:', payload)
 
+        let eventId
         if (selectedEventId.value) {
             const updateRes = await api.patch(`/event/${selectedEventId.value}`, { event: payload }, {
                 headers: {
@@ -575,6 +517,7 @@ const submitEvent = async () => {
                 }
             })
             console.log('Обновление события:', updateRes.data)
+            eventId = selectedEventId.value
         } else {
             const createRes = await api.post('/event', payload, {
                 headers: {
@@ -582,6 +525,69 @@ const submitEvent = async () => {
                 }
             })
             console.log('Создание события:', createRes.data)
+            eventId = createRes.data?.id
+        }
+
+        // После создания события загружаем изображение, если оно есть
+        if (imageFile.value && eventId) {
+            try {
+                const imageUrl = await uploadToS3(eventId)
+                if (imageUrl) {
+                    // Обновляем событие с URL изображения
+                    const updatePayload = {
+                        ...payload,
+                        image: imageUrl
+                    }
+                    await api.patch(`/event/${eventId}`, { event: updatePayload }, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
+                }
+            } catch (uploadErr) {
+                console.error('Ошибка при загрузке изображения:', uploadErr)
+                alert('Мероприятие создано, но возникла ошибка при загрузке изображения')
+            }
+        }
+
+        // После создания события добавляем поля, если они есть
+        if (eventId && (event.value.fields.participant.length > 0 || event.value.fields.group.length > 0)) {
+            try {
+                // Добавляем поля для участников
+                if (event.value.fields.participant.length > 0) {
+                    await api.post('/responses/custom-fields/participant', {
+                        event_id: eventId,
+                        fields: event.value.fields.participant.map(f => ({
+                            name: f.label,
+                            type: f.type,
+                            required: true
+                        }))
+                    }, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
+                }
+
+                // Добавляем поля для групп
+                if (event.value.fields.group.length > 0) {
+                    await api.post('/responses/custom-fields/team', {
+                        event_id: eventId,
+                        fields: event.value.fields.group.map(f => ({
+                            name: f.label,
+                            type: f.type,
+                            required: true
+                        }))
+                    }, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
+                }
+            } catch (fieldsErr) {
+                console.error('Ошибка при добавлении полей:', fieldsErr)
+                alert('Мероприятие создано, но возникла ошибка при добавлении полей')
+            }
         }
 
         alert(selectedEventId.value ? 'Мероприятие успешно обновлено!' : 'Мероприятие успешно создано!')
@@ -591,7 +597,8 @@ const submitEvent = async () => {
         console.error('Ошибка при сохранении мероприятия:', {
             message: err.message,
             response: err.response?.data,
-            status: err.response?.status
+            status: err.response?.status,
+            payload: event.value
         })
 
         if (err.response?.status === 401) {

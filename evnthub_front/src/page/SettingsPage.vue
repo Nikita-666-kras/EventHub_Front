@@ -124,7 +124,7 @@ h2 {
     border-radius: 20px;
     overflow: hidden;
     width: fit-content;
-    
+
 }
 
 .theme-switch input[type="radio"],
