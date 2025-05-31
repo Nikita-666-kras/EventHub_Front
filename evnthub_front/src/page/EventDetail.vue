@@ -48,7 +48,14 @@
                         </div>
                     </div>
 
-                    <button class="register-btn" @click="register">Зарегистрироваться</button>
+                    <form class="custom-fields-form" @submit.prevent="register">
+                        <div v-for="field in customFields" :key="field.name" class="custom-field">
+                            <label :for="field.name">{{ field.name }} <span v-if="field.required">*</span></label>
+                            <input v-model="customFieldValues[field.name]" :id="field.name"
+                                :type="field.type === 'number' ? 'number' : 'text'" :required="field.required" />
+                        </div>
+                        <button class="register-btn" type="submit">Зарегистрироваться</button>
+                    </form>
                 </div>
 
 
@@ -75,11 +82,10 @@ import NavBar from '@/components/nav_bar.vue'
 const route = useRoute()
 const event = ref({})
 const creator = ref({})
-
-
+const customFields = ref([])
+const customFieldValues = ref({})
 
 console.log(event)
-
 
 onMounted(async () => {
     const eventId = route.params.id
@@ -89,6 +95,16 @@ onMounted(async () => {
 
         const userRes = await api.get(`/users/${res.data.creatorId}`)
         creator.value = userRes.data
+        // Получаем кастомные поля для участника
+        try {
+            const customRes = await api.get(`/responses/custom-fields/participant/${res.data.id || eventId}`)
+            customFields.value = customRes.data.fields || []
+            customFields.value.forEach(field => {
+                customFieldValues.value[field.name] = ''
+            })
+        } catch (e) {
+            console.error('Ошибка загрузки кастомных полей:', e)
+        }
     } catch (e) {
         console.error('Ошибка загрузки данных:', e)
     }
@@ -98,7 +114,6 @@ const formatDate = (iso) => {
     const date = new Date(iso)
     return date.toLocaleString()
 }
-
 
 const getUserIdFromToken = () => {
     const token = document.cookie
@@ -118,11 +133,17 @@ const register = async () => {
     const eventId = route.params.id
     try {
         const userId = getUserIdFromToken()
-
+        // 1. Основная регистрация
         await api.post('/participants/register', {
-            userId: userId, // замените на реальный userId из авторизации
+            userId: userId,
             eventId: eventId,
             teamId: null
+        })
+        // 2. Отправка кастомных полей
+        await api.post('/responses/participant/submit', {
+            event_id: eventId,
+            participant_id: userId,
+            responses: customFieldValues.value
         })
         alert('Вы успешно зарегистрированы!')
     } catch (e) {
@@ -429,5 +450,39 @@ const register = async () => {
 
 .event-extra-info ul {
     padding-left: 1.2rem;
+}
+
+.custom-fields-form {
+    background: #232323;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #333;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.custom-field label {
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+    display: block;
+}
+
+.custom-field input {
+    width: 100%;
+    padding: 0.7rem;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background: #181818;
+    color: #fff;
+    font-size: 1rem;
+    margin-top: 0.2rem;
+}
+
+.custom-field input:focus {
+    border-color: #9333ea;
+    outline: none;
 }
 </style>

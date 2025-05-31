@@ -9,6 +9,7 @@ const routes = [
   { path: '/event_create', component: () => import('@/page/EventCreationForm.vue') },
   { path: '/stats', component: () => import('@/page/EventStatistics.vue') },
   { path: '/team', component: () => import('@/page/TeamPage.vue') },
+  {path:'/settings',component: () => import('@/page/SettingsPage.vue')},
   {
     path: '/event/:id',
     name: 'EventDetail',

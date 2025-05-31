@@ -4,13 +4,31 @@
       <router-link to="/lenta"><img src="/src/assets/logo.svg" alt="Logo" class="logo_img" /></router-link>
       <div class="iconss">
         <nav class="nav-icons">
+          <!-- Все кнопки по умолчанию -->
+          <template v-if="!settings.isCompactMode">
+            <router-link to="/lenta"><img src="@/assets/icons/waves.png" alt="Waves" /></router-link>
+            <router-link to="/user"><img src="@/assets/icons/user.png" alt="User" /></router-link>
+            <router-link to="/event_create"><img src="@/assets/icons/calendar.png" alt="Calendar" /></router-link>
+            <router-link to="/stats"><img src="@/assets/icons/star.png" alt="Star" /></router-link>
+            <router-link to="/team"><img src="@/assets/icons/stats.png" alt="Stats" /></router-link>
+          </template>
 
-          <router-link to="/user"><img src="@/assets/icons/user.png" alt="User" /></router-link>
-          <router-link to="/event_create"><img src="@/assets/icons/calendar.png" alt="Calendar" /></router-link>
-          <router-link to="/stats"><img src="@/assets/icons/star.png" alt="Star" /></router-link>
-          <router-link to="/team"><img src="@/assets/icons/stats.png" alt="Stats" /></router-link>
-          <router-link to="/lenta"><img src="@/assets/icons/waves.png" alt="Waves" /></router-link>
+          <!-- Компактный режим -->
+          <template v-else>
+            <!-- Режим участника -->
+            <template v-if="settings.userMode === 'participant'">
+              <router-link to="/lenta"><img src="@/assets/icons/waves.png" alt="Waves" /></router-link>
+              <router-link to="/user"><img src="@/assets/icons/user.png" alt="User" /></router-link>
+              <router-link to="/team"><img src="@/assets/icons/stats.png" alt="Stats" /></router-link>
+            </template>
 
+            <!-- Режим создателя -->
+            <template v-else>
+              <router-link to="/user"><img src="@/assets/icons/user.png" alt="User" /></router-link>
+              <router-link to="/event_create"><img src="@/assets/icons/calendar.png" alt="Calendar" /></router-link>
+              <router-link to="/stats"><img src="@/assets/icons/star.png" alt="Star" /></router-link>
+            </template>
+          </template>
         </nav>
       </div>
     </div>
@@ -22,7 +40,9 @@
 </template>
 
 <script setup>
+import { useSettingsStore } from '@/stores/settings'
 
+const settings = useSettingsStore()
 </script>
 
 <style scoped>
