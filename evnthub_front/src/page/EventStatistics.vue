@@ -27,9 +27,18 @@
 
         <div class="analytics-section" v-if="answers.length && selectedField">
           <h4>Аналитика по полю "{{ selectedField.label }}"</h4>
-          <ul>
-            <li v-for="(value, i) in aggregatedAnswers" :key="i">{{ value.option }} — {{ value.count }}</li>
-          </ul>
+          <div class="stats-container">
+            <div class="stats-list">
+              <div v-for="(value, i) in aggregatedAnswers" :key="i" class="stat-item">
+                <span class="stat-label">{{ value.option }}</span>
+                <div class="stat-bar">
+                  <div class="stat-fill" :style="{ width: `${(value.count / answers.length) * 100}%` }"></div>
+                </div>
+                <span class="stat-count">{{ value.count }} ({{ Math.round((value.count / answers.length) * 100)
+                  }}%)</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="participants-box">
@@ -71,7 +80,6 @@
   </div>
 </template>
 
-
 <script setup>
 import NavBar from '@/components/nav_bar.vue'
 import { ref, watch, onMounted, computed } from 'vue'
@@ -104,12 +112,40 @@ const formatDateSafe = (val) => {
   return isNaN(date) ? 'Дата недоступна' : date.toLocaleDateString()
 }
 
+const loadCustomFields = async (eventId) => {
+  try {
+    // Загружаем поля для участников
+    const participantFields = await api.get(`/api/responses/custom-fields/participant/${eventId}`)
+    // Загружаем поля для команд
+    const teamFields = await api.get(`/api/responses/custom-fields/team/${eventId}`)
+
+    // Объединяем поля и форматируем их для селектора
+    availableFields.value = [
+      ...(participantFields.data || []).map(field => ({
+        label: field.name,
+        type: field.type,
+        required: field.required,
+        source: 'participant'
+      })),
+      ...(teamFields.data || []).map(field => ({
+        label: field.name,
+        type: field.type,
+        required: field.required,
+        source: 'team'
+      }))
+    ]
+  } catch (e) {
+    console.error('Ошибка загрузки кастомных полей:', e)
+  }
+}
+
 const selectEvent = async (event) => {
   selectedEvent.value = event
   eventTitle.value = event.eventName
-  availableFields.value = [...(event.fields?.participant || []), ...(event.fields?.group || [])]
+  await loadCustomFields(event.id)
   await loadParticipants(event.id)
-  await loadAnswers(event.id)
+  // Сбрасываем выбранное поле
+  selectedField.value = null
 }
 
 const loadParticipants = async (eventId) => {
@@ -132,9 +168,22 @@ const loadParticipants = async (eventId) => {
 }
 
 const loadAnswers = async (eventId) => {
+  if (!selectedField.value) return
+
   try {
-    const res = await api.get(`/responses/event/${eventId}`)
-    answers.value = res.data || []
+    let responses = []
+
+    if (selectedField.value.source === 'participant') {
+      // Загружаем ответы участников
+      const res = await api.get(`/api/responses/participant/${eventId}`)
+      responses = res.data || []
+    } else {
+      // Загружаем ответы команд
+      const res = await api.get(`/api/responses/team/${eventId}`)
+      responses = res.data || []
+    }
+
+    answers.value = responses
   } catch (e) {
     console.error('Ошибка при получении ответов:', e)
   }
@@ -174,11 +223,26 @@ const aggregatedAnswers = computed(() => {
 
   answers.value.forEach(resp => {
     const val = resp.responses?.[fieldKey]
-    if (!val) return
-    map.set(val, (map.get(val) || 0) + 1)
+    if (val === undefined || val === null) return
+
+    // Для числовых полей группируем по диапазонам
+    if (selectedField.value.type === 'number') {
+      const numVal = Number(val)
+      if (isNaN(numVal)) return
+
+      // Группируем по диапазонам (например, 0-10, 11-20, и т.д.)
+      const range = Math.floor(numVal / 10) * 10
+      const rangeKey = `${range}-${range + 9}`
+      map.set(rangeKey, (map.get(rangeKey) || 0) + 1)
+    } else {
+      // Для строковых полей просто считаем количество
+      map.set(val, (map.get(val) || 0) + 1)
+    }
   })
 
-  return Array.from(map.entries()).map(([option, count]) => ({ option, count }))
+  return Array.from(map.entries())
+    .map(([option, count]) => ({ option, count }))
+    .sort((a, b) => b.count - a.count) // Сортируем по убыванию количества
 })
 
 onMounted(async () => {
@@ -194,10 +258,6 @@ onMounted(async () => {
   }
 })
 </script>
-
-
-
-
 
 <style scoped>
 .chart-field-selector {
@@ -225,16 +285,13 @@ onMounted(async () => {
   background: #150a1e;
   min-height: 100vh;
   color: white;
-
   padding: 2rem 0;
-  /* justify-content: center; */
 }
 
 .statistics-page {
   display: flex;
   width: 80%;
   max-width: 1224px;
-  /* margin: 0 auto; */
   gap: 0;
 }
 
@@ -242,7 +299,6 @@ onMounted(async () => {
   background: #444;
   border-radius: 16px 0 0 16px;
   padding: 2.5rem;
-
   min-width: 45rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   border: 1px solid #333;
@@ -544,6 +600,55 @@ onMounted(async () => {
 .create-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(147, 51, 234, 0.4);
+}
+
+.analytics-section {
+  background: #2a2a2a;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border: 1px solid #333;
+}
+
+.stats-container {
+  margin-top: 1rem;
+}
+
+.stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stat-label {
+  min-width: 150px;
+  color: #fff;
+}
+
+.stat-bar {
+  flex: 1;
+  height: 20px;
+  background: #333;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.stat-fill {
+  height: 100%;
+  background: linear-gradient(to right, #3b82f6, #9333ea);
+  transition: width 0.3s ease;
+}
+
+.stat-count {
+  min-width: 100px;
+  text-align: right;
+  color: #888;
 }
 
 @keyframes fadeIn {

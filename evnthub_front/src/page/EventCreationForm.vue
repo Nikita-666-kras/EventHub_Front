@@ -150,6 +150,9 @@
                             :class="{ active: selectedEventId === ev.id }">
                             <p>{{ ev.eventName }}</p>
                             <p>Дата: {{ formatDate(ev.startDateAndTime) }}</p>
+                            <button v-if="selectedEventId === ev.id" class="delete-btn" @click.stop="confirmDelete(ev)">
+                                Удалить
+                            </button>
                         </div>
                     </div>
                     <button class="submit-btn" @click="resetForm">Новое мероприятие</button>
@@ -500,11 +503,13 @@ const submitEvent = async () => {
             createDate: now,
             startDateAndTime: `${event.value.date}T${event.value.time}:00`,
             endDateAndTime: `${event.value.date}T${event.value.endTime}:00`,
-            maxParticipantNumber: Number(event.value.maxParticipants),
+            maxParticipantNumber: Number(event.value.maxParticipants) || 0,
             currentParticipantQuantity: 0,
             eventAddress: event.value.location,
             isRecurring: false,
-            qrCode: 'string'
+            qrCode: 'string',
+            grouping: event.value.grouping === 'Группы и соло' ? 'both' :
+                event.value.grouping === 'Только соло' ? 'solo' : 'group'
         }
 
         console.log('Отправка события:', payload)
@@ -555,37 +560,53 @@ const submitEvent = async () => {
             try {
                 // Добавляем поля для участников
                 if (event.value.fields.participant.length > 0) {
-                    await api.post('/responses/custom-fields/participant', {
+                    const participantFieldsPayload = {
                         event_id: eventId,
                         fields: event.value.fields.participant.map(f => ({
                             name: f.label,
                             type: f.type,
-                            required: true
+                            require: true
                         }))
-                    }, {
+                    }
+                    console.log('Отправка полей участников:', participantFieldsPayload)
+                    const participantRes = await api.post('/responses/custom-fields/participant', participantFieldsPayload, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }
                     })
+                    console.log('Ответ на создание полей участников:', participantRes.data)
                 }
 
                 // Добавляем поля для групп
                 if (event.value.fields.group.length > 0) {
-                    await api.post('/responses/custom-fields/team', {
+                    const teamFieldsPayload = {
                         event_id: eventId,
                         fields: event.value.fields.group.map(f => ({
                             name: f.label,
                             type: f.type,
-                            required: true
+                            require: true
                         }))
-                    }, {
+                    }
+                    console.log('Отправка полей команд:', teamFieldsPayload)
+                    const teamRes = await api.post('/responses/custom-fields/team', teamFieldsPayload, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }
                     })
+                    console.log('Ответ на создание полей команд:', teamRes.data)
                 }
             } catch (fieldsErr) {
-                console.error('Ошибка при добавлении полей:', fieldsErr)
+                console.error('Ошибка при добавлении полей:', {
+                    error: fieldsErr,
+                    response: fieldsErr.response?.data,
+                    status: fieldsErr.response?.status,
+                    headers: fieldsErr.response?.headers,
+                    request: {
+                        url: fieldsErr.config?.url,
+                        method: fieldsErr.config?.method,
+                        data: fieldsErr.config?.data
+                    }
+                })
                 alert('Мероприятие создано, но возникла ошибка при добавлении полей')
             }
         }
@@ -598,6 +619,12 @@ const submitEvent = async () => {
             message: err.message,
             response: err.response?.data,
             status: err.response?.status,
+            headers: err.response?.headers,
+            request: {
+                url: err.config?.url,
+                method: err.config?.method,
+                data: err.config?.data
+            },
             payload: event.value
         })
 
@@ -676,9 +703,56 @@ const resetForm = () => {
     }
     fieldMode.value = 'participant'
 }
+
+const confirmDelete = async (event) => {
+    if (!confirm(`Вы уверены, что хотите удалить мероприятие "${event.eventName}"?`)) {
+        return
+    }
+
+    try {
+        const token = await getValidToken()
+        if (!token) {
+            alert('Необходимо авторизоваться')
+            window.location.href = '/login'
+            return
+        }
+
+        await api.delete(`/event/${event.id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+
+        alert('Мероприятие успешно удалено!')
+        await loadEvents()
+        resetForm()
+    } catch (err) {
+        console.error('Ошибка при удалении мероприятия:', {
+            message: err.message,
+            response: err.response?.data,
+            status: err.response?.status,
+            headers: err.response?.headers,
+            request: {
+                url: err.config?.url,
+                method: err.config?.method
+            }
+        })
+
+        if (err.response?.status === 401) {
+            try {
+                await refreshToken()
+                return await confirmDelete(event)
+            } catch (refreshErr) {
+                alert('Сессия истекла. Перенаправление на страницу входа...')
+                window.location.href = '/login'
+                throw refreshErr
+            }
+        } else {
+            alert('Ошибка при удалении мероприятия. Пожалуйста, попробуйте снова.')
+        }
+    }
+}
 </script>
-
-
 
 <style scoped>
 .group_or_solo {
@@ -1071,6 +1145,8 @@ select:focus {
     margin-bottom: 1rem;
     transition: all 0.3s ease;
     border: 1px solid #333;
+    position: relative;
+    padding-bottom: 2.5rem;
 }
 
 .upcoming-event:hover {
@@ -1191,5 +1267,22 @@ button.create:disabled {
 .view-mode-field:focus {
     box-shadow: none !important;
     border-color: #555 !important;
+}
+
+.delete-btn {
+    background: #dc2626;
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.delete-btn:hover {
+    background: #b91c1c;
+    transform: translateY(-2px);
 }
 </style>

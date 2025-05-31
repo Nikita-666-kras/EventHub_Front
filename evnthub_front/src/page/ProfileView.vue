@@ -75,7 +75,8 @@
               <input v-else v-model="editedUser.birthDate" type="date" />
             </div>
             <div class="field-row"><span class="label">Возраст:</span>
-              <span>{{ user.age }} лет</span>
+              <span v-if="!isEditing">{{ user.age }} лет</span>
+              <span v-else>{{ calculatedAge }} {{ calculatedAge ? 'лет' : '' }}</span>
             </div>
           </div>
         </div>
@@ -138,7 +139,7 @@
 
 <script setup>
 import NavBar from '@/components/nav_bar.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '@/utils/axios'
 
 const user = ref({})
@@ -152,6 +153,20 @@ const isEditing = ref(false)
 const editedUser = ref({})
 const invitesPopupVisible = ref(false)
 const teamInvites = ref([])
+
+// Computed property to calculate age from birthDate
+const calculatedAge = computed(() => {
+  const birthDateStr = editedUser.value.birthDate;
+  if (!birthDateStr) return '';
+  const birthDate = new Date(birthDateStr);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age >= 0 ? age : ''; // Return age or empty string for invalid dates/future dates
+})
 
 const avatarFile = ref(null)
 const avatarPreview = ref('')
@@ -354,24 +369,48 @@ const saveEdit = async () => {
   }
 
   try {
-    let avatarUrl = user.value.image
+    // Upload avatar first if a new file is selected
+    let avatarUrl = user.value.image // Start with current avatar URL
     if (avatarFile.value) {
       console.log('Обнаружен новый файл аватара, загружаем в S3...')
       try {
         avatarUrl = await uploadAvatarToS3(userId)
       } catch (uploadErr) {
         console.error('Ошибка при загрузке нового аватара в S3, отменяем сохранение профиля:', uploadErr)
+        // If avatar upload fails, stop the profile save process
+        // The uploadAvatarToS3 function already shows a toast
         return
       }
     }
 
+    // Calculate age before preparing the payload
+    let ageToSend = null;
+    const birthDateStr = editedUser.value.birthDate;
+    if (birthDateStr) {
+      const birthDate = new Date(birthDateStr);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      if (age >= 0) {
+        ageToSend = age;
+      }
+    }
+
+    // Prepare payload for patching user data, including the (potentially new) avatar URL and calculated age
     const updatePayload = {
       ...editedUser.value,
       id: userId,
-      image: avatarUrl
+      image: avatarUrl,
+      age: ageToSend // Include the calculated age in the payload
     }
-    console.log('Сохраняем данные профиля с URL аватара:', updatePayload)
+    // Removed: delete updatePayload.age; // No longer deleting age
 
+    console.log('Сохраняем данные профиля с URL аватара и возрастом:', updatePayload)
+
+    // Patch user data on the backend
     await api.patch('/users', updatePayload)
 
     user.value = { ...user.value, ...editedUser.value, image: avatarUrl }
@@ -604,6 +643,9 @@ onMounted(async () => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s ease;
   border: 2px solid #9333ea;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .avatar:hover {
