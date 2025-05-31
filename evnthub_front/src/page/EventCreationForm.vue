@@ -858,7 +858,22 @@ const resetForm = () => {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    max-height: 100vh;
+    max-height: 90vh;
+    position: sticky;
+    top: 2rem;
+}
+
+.event-sidebar h4 {
+    position: sticky;
+    top: 0;
+    background: #222;
+    padding: 1rem;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    z-index: 10;
+    border-bottom: 1px solid #444;
+    margin: 0;
 }
 
 .event-sidebar-scroll {
@@ -1050,22 +1065,24 @@ select:focus {
 }
 
 .upcoming-event {
-    background: #444;
-    padding: 0.5rem;
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
+    background: #2a2a2a;
+    padding: 1.2rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
     transition: all 0.3s ease;
-    cursor: pointer;
+    border: 1px solid #333;
 }
 
 .upcoming-event:hover {
-    transform: translateX(5px);
-    background: #555;
+    transform: translateY(-3px);
+    border-color: #9333ea;
+    box-shadow: 0 4px 20px rgba(147, 51, 234, 0.2);
 }
 
 .upcoming-event.active {
-    background: #555;
     border: 1px solid #9333ea;
+    background: #555;
+    animation: pulse 2s infinite;
 }
 
 .time-fields {

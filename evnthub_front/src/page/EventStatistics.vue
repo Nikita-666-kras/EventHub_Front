@@ -59,7 +59,8 @@
       <div class="sidebar_2">
         <div class="sidebar_2_scroll">
           <h4 class="tile_sidebar">Мои мероприятия</h4>
-          <div class="event-item" v-for="event in userEvents" :key="event.id" @click="selectEvent(event)" :class="{ active: selectedEvent && selectedEvent.id === event.id }">
+          <div class="event-item" v-for="event in userEvents" :key="event.id" @click="selectEvent(event)"
+            :class="{ active: selectedEvent && selectedEvent.id === event.id }">
             <p>{{ event.eventName }}</p>
             <p>Дата начала: {{ formatDateSafe(event.startDateAndTime) }}</p>
           </div>
@@ -396,7 +397,7 @@ onMounted(async () => {
 .sidebar_2 {
   background: #222;
   border-radius: 0 16px 16px 0;
-  padding: 1.5rem;
+  padding: 0;
   color: white;
   height: fit-content;
   width: 30%;
@@ -405,28 +406,36 @@ onMounted(async () => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   border: 1px solid #333;
   animation: slideIn 0.5s ease-out;
+  max-height: 90vh;
+  position: sticky;
+  top: 2rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar_2_scroll {
   flex-grow: 1;
   overflow-y: auto;
-  text-align: center;
-  padding: 0 1rem 1rem 1rem;
+  padding: 1rem;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+.sidebar_2_scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .tile_sidebar {
   position: sticky;
   top: 0;
   background: #222;
-  padding: 0.8rem;
+  padding: 1rem;
   text-align: center;
   font-weight: bold;
   font-size: 1.1rem;
   z-index: 10;
   border-bottom: 1px solid #444;
-  animation: fadeIn 0.8s ease-out;
+  margin: 0;
 }
 
 .view-switch img {

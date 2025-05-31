@@ -27,37 +27,42 @@ const hasMore = ref(true)
 let cursor = ''
 const limit = 5
 
+const formatCursor = (dateStr) => {
+  // Преобразуем дату к ISO с миллисекундами без Z
+  const d = new Date(dateStr)
+  if (isNaN(d)) return ''
+  return d.toISOString().replace('Z', '')
+}
+
 const fetchEvents = async () => {
   if (loading.value || !hasMore.value) return
 
   loading.value = true
   try {
+    const sortBy = 'create_date'
     const url = cursor
-      ? `/events/page?cursor=${encodeURIComponent(cursor)}&limit=${limit}&sortBy=create_date`
-      : `/events/page?limit=${limit}&sortBy=start_date_and_time`
+      ? `/events/page?cursor=${encodeURIComponent(cursor)}&limit=${limit}&sortBy=${sortBy}`
+      : `/events/page?limit=${limit}&sortBy=${sortBy}`
 
-    console.log('Fetching events from URL:', url)
     const response = await api.get(url)
-    console.log('Response data:', response.data)
-
     const newEvents = response.data || []
-    console.log('New events:', newEvents)
 
-    if (newEvents.length < limit) {
-      console.log('No more events available')
+    // Убрать дубли по id
+    const existingIds = new Set(events.value.map(e => e.id))
+    const uniqueNewEvents = newEvents.filter(e => !existingIds.has(e.id))
+    events.value.push(...uniqueNewEvents)
+
+    if (uniqueNewEvents.length < limit) {
       hasMore.value = false
     }
 
-    if (newEvents.length > 0) {
-      cursor = newEvents[newEvents.length - 1].createDate
-      console.log('New cursor:', cursor)
-      events.value.push(...newEvents)
-      console.log('Total events:', events.value.length)
+    if (uniqueNewEvents.length > 0) {
+      // Курсор — дата последнего события (ISO с миллисекундами)
+      cursor = formatCursor(uniqueNewEvents[uniqueNewEvents.length - 1].createDate)
     }
   } catch (err) {
     console.error('[❌] Ошибка загрузки событий:', err)
     if (err?.response?.status === 400) {
-      console.log('Received 400 status, marking as no more events')
       hasMore.value = false
     }
   } finally {

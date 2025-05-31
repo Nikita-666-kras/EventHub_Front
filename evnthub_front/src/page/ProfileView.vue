@@ -5,6 +5,14 @@
       {{ toast.message }}
     </div>
 
+    <div v-if="isLoading" class="loading-state">
+      Загрузка данных...
+    </div>
+
+    <div v-else-if="error" class="error-state">
+      {{ error }}
+    </div>
+
     <div class="content">
       <div class="profile-card">
         <div class="profile-header">
@@ -137,49 +145,152 @@ const user = ref({})
 const soloEvents = ref([])
 const groupEvents = ref([])
 const upcomingEvents = ref([])
+const isLoading = ref(false)
+const error = ref(null)
 
 const isEditing = ref(false)
 const editedUser = ref({})
 const invitesPopupVisible = ref(false)
 const teamInvites = ref([])
 
-
 const avatarFile = ref(null)
 const avatarPreview = ref('')
+
+const refreshToken = async () => {
+  try {
+    const refreshToken = document.cookie.split('; ').find(row => row.startsWith('refresh_token='))?.split('=')[1]
+    if (!refreshToken) {
+      throw new Error('No refresh token found')
+    }
+
+    const res = await api.post('/auth/refresh', { refresh_token: refreshToken })
+    if (res.data?.access_token) {
+      document.cookie = `jwt=${res.data.access_token}; path=/`
+      return res.data.access_token
+    }
+    throw new Error('No access token in response')
+  } catch (err) {
+    console.error('Error refreshing token:', err)
+    window.location.href = '/login'
+    throw err
+  }
+}
+
+const getValidToken = async () => {
+  const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
+  if (!token) {
+    return await refreshToken()
+  }
+  return token
+}
+
+const isValidImageFormat = (file) => {
+  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  return validTypes.includes(file.type)
+}
 
 const handleAvatarUpload = (e) => {
   const file = e.target.files[0]
   if (!file) return
+
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Размер файла не должен превышать 5MB', 'error')
+    return
+  }
+
+  if (!isValidImageFormat(file)) {
+    showToast('Пожалуйста, загрузите изображение в формате JPG, PNG, GIF или WebP', 'error')
+    return
+  }
+
   avatarFile.value = file
   const reader = new FileReader()
-  reader.onload = () => (avatarPreview.value = reader.result)
+  reader.onload = () => {
+    avatarPreview.value = reader.result
+  }
+  reader.onerror = () => {
+    showToast('Ошибка при чтении файла', 'error')
+    avatarPreview.value = ''
+  }
   reader.readAsDataURL(file)
 }
 
 const uploadAvatarToS3 = async (userId) => {
-  if (!avatarFile.value) return
-
-  const formData = new FormData()
-  formData.append('file', avatarFile.value)
-  formData.append('uploaded_by', userId)
-  formData.append('entity_type', 'USER')
-  formData.append('entity_id', userId)
+  if (!avatarFile.value) return null
 
   try {
-    await api.post('/storage/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+    const token = await getValidToken()
+    if (!token) {
+      showToast('Необходимо авторизоваться', 'error')
+      window.location.href = '/login'
+      return null
+    }
+
+    if (!(avatarFile.value instanceof File)) {
+      console.error('Некорректный файл для загрузки аватара')
+      return null
+    }
+
+    const formData = new FormData()
+    formData.append('file', avatarFile.value)
+    formData.append('uploaded_by', userId)
+    formData.append('entity_type', 'USER')
+    formData.append('entity_id', userId)
+
+    const headers = {
+      'Content-Type': 'multipart/form-data',
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+
+    console.log('Отправка запроса на загрузку аватара...')
+    const res = await api.post('/storage/upload', formData, {
+      headers,
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        console.log(`Загрузка аватара: ${percentCompleted}%`)
+      },
+      timeout: 30000
     })
-    showToast('Аватар обновлён', 'success')
+
+    if (!res.data?.s3_url) {
+      console.error('URL изображения не получен в ответе S3:', res.data)
+      showToast('Ошибка: URL аватара не получен', 'error')
+      return null
+    }
+
+    const s3Url = res.data.s3_url
+    console.log('Аватар успешно загружен в S3, URL:', s3Url)
+
+    showToast('Аватар успешно загружен', 'success')
+    return s3Url
+
   } catch (err) {
-    console.error('Ошибка загрузки аватара:', err)
-    showToast('Ошибка загрузки аватара', 'error')
+    console.error('Ошибка загрузки в S3:', {
+      message: err.message,
+      response: err.response?.data,
+      status: err.response?.status
+    })
+
+    if (err.response?.status === 401) {
+      try {
+        await refreshToken()
+        return await uploadAvatarToS3(userId)
+      } catch (refreshErr) {
+        showToast('Сессия истекла. Перенаправление на страницу входа...', 'error')
+        window.location.href = '/login'
+        throw refreshErr
+      }
+    } else if (err.response?.status === 413) {
+      showToast('Файл слишком большой (макс. 5MB)', 'error')
+    } else if (err.response?.status === 415) {
+      showToast('Неподдерживаемый формат файла. Используйте JPG, PNG, GIF или WebP.', 'error')
+    } else {
+      showToast('Ошибка при загрузке аватара. Пожалуйста, попробуйте еще раз.', 'error')
+    }
+    throw err
   }
 }
-
-const updateAvatarPreview = (userId) => {
-  avatarPreview.value = `${import.meta.env.VITE_API_URL}/api/files/avatar/user/${userId}`
-}
-
 
 const formatDate = (iso) => new Date(iso).toLocaleString()
 
@@ -202,7 +313,6 @@ const respondToInvite = async (inviteId, status) => {
   }
 }
 
-
 const toggleInvitesPopup = () => {
   invitesPopupVisible.value = !invitesPopupVisible.value
 }
@@ -215,7 +325,6 @@ const loadTeamInvites = async (userId) => {
     console.error('Ошибка загрузки приглашений:', e)
   }
 }
-
 
 const getUserIdFromToken = () => {
   const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
@@ -239,43 +348,93 @@ const cancelEdit = () => {
 
 const saveEdit = async () => {
   const userId = getUserIdFromToken()
-  if (!userId) return
+  if (!userId) {
+    showToast('Пользователь не авторизован', 'error')
+    return
+  }
 
   try {
-    await api.patch('/users', { ...editedUser.value, id: userId })
-    user.value = { ...editedUser.value }
+    let avatarUrl = user.value.image
+    if (avatarFile.value) {
+      console.log('Обнаружен новый файл аватара, загружаем в S3...')
+      try {
+        avatarUrl = await uploadAvatarToS3(userId)
+      } catch (uploadErr) {
+        console.error('Ошибка при загрузке нового аватара в S3, отменяем сохранение профиля:', uploadErr)
+        return
+      }
+    }
+
+    const updatePayload = {
+      ...editedUser.value,
+      id: userId,
+      image: avatarUrl
+    }
+    console.log('Сохраняем данные профиля с URL аватара:', updatePayload)
+
+    await api.patch('/users', updatePayload)
+
+    user.value = { ...user.value, ...editedUser.value, image: avatarUrl }
     isEditing.value = false
+
     showToast('Профиль успешно сохранён', 'success')
 
-    await uploadAvatarToS3(userId)
   } catch (e) {
-    showToast('Ошибка при сохранении профиля', 'error')
+    console.error('Ошибка при сохранении профиля:', e)
+    if (e.response?.status !== 401) {
+      showToast('Ошибка при сохранении профиля', 'error')
+    }
   }
 }
-
-
-
 
 onMounted(async () => {
   const userId = getUserIdFromToken()
   if (!userId) return
 
+  isLoading.value = true
+  error.value = null
+
   try {
     const userRes = await api.get(`/users/${userId}`)
     user.value = userRes.data
-    updateAvatarPreview(userId)
+
+    if (user.value.image) {
+      avatarPreview.value = user.value.image
+    } else {
+      avatarPreview.value = ''
+    }
 
     const eventsRes = await api.get(`/events/participant/${userId}`)
     const allEvents = eventsRes.data || []
 
     const now = new Date()
-    soloEvents.value = allEvents.filter(e => new Date(e.endDateAndTime) < now && e.grouping === 'solo')
-    groupEvents.value = allEvents.filter(e => new Date(e.endDateAndTime) < now && e.grouping === 'group')
-    upcomingEvents.value = allEvents.filter(e => new Date(e.startDateAndTime) >= now)
 
-    await loadTeamInvites(userId) // <== вот сюда передай userId
+    const parseDate = (dateStr) => {
+      const date = new Date(dateStr)
+      return isNaN(date.getTime()) ? null : date
+    }
+
+    soloEvents.value = allEvents.filter(e => {
+      const endDate = parseDate(e.endDateAndTime)
+      return endDate && endDate < now && e.grouping === 'solo'
+    })
+
+    groupEvents.value = allEvents.filter(e => {
+      const endDate = parseDate(e.endDateAndTime)
+      return endDate && endDate < now && e.grouping === 'group'
+    })
+
+    upcomingEvents.value = allEvents.filter(e => {
+      const startDate = parseDate(e.startDateAndTime)
+      return startDate && startDate >= now
+    })
+
+    await loadTeamInvites(userId)
   } catch (e) {
     console.error('Ошибка загрузки данных:', e)
+    error.value = 'Не удалось загрузить данные. Пожалуйста, попробуйте позже.'
+  } finally {
+    isLoading.value = false
   }
 })
 
@@ -322,12 +481,10 @@ onMounted(async () => {
   }
 }
 
-
 .avatar.clickable {
   cursor: pointer;
   border-color: #3b82f6;
 }
-
 
 .invites-popup {
   position: absolute;
@@ -368,8 +525,6 @@ onMounted(async () => {
   background: #7e22ce;
 }
 
-
-
 .profile-layout {
   min-height: 100vh;
   margin-left: 80px;
@@ -386,7 +541,6 @@ onMounted(async () => {
   width: 80%;
   max-width: 1224px;
   margin: 0 auto;
-
 }
 
 .profile-card {
@@ -564,35 +718,63 @@ onMounted(async () => {
 .upcoming {
   background: #222;
   border-radius: 0 16px 16px 0;
-  padding: 1.5rem;
+  padding: 0.5rem;
   color: white;
   height: fit-content;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   border: 1px solid #333;
   animation: slideIn 0.5s ease-out;
   flex: 1;
+  max-height: 90vh;
+  position: sticky;
+  top: 2rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .upcoming h4 {
-  color: #fff;
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
+  position: sticky;
+  top: 0;
+  background: #222;
+  padding: 1rem;
   text-align: center;
+  font-weight: bold;
+  font-size: 1.1rem;
+  z-index: 10;
+  border-bottom: 1px solid #444;
+  margin: 0;
+}
+
+.upcoming .event-upcoming {
+  padding: 1rem;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.upcoming .event-upcoming::-webkit-scrollbar {
+  display: none;
 }
 
 .event-upcoming {
-  border: 1px solid #333;
+  background: #2a2a2a;
+  padding: 1.2rem;
   border-radius: 12px;
-  padding: 1rem;
-  margin-top: 1rem;
-  background: #444;
+  margin-bottom: 1rem;
   transition: all 0.3s ease;
+  border: 1px solid #333;
 }
 
 .event-upcoming:hover {
-  transform: translateX(5px);
+  transform: translateY(-3px);
   border-color: #9333ea;
+  box-shadow: 0 4px 20px rgba(147, 51, 234, 0.2);
+}
+
+.event-upcoming.active {
+  border: 1px solid #9333ea;
+  background: #555;
+  animation: pulse 2s infinite;
 }
 
 .event-upcoming p {
@@ -625,6 +807,20 @@ onMounted(async () => {
   }
 }
 
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(147, 51, 234, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0);
+  }
+}
+
 @media (max-width: 1024px) {
   .profile-layout {
     margin-left: 0;
@@ -649,5 +845,17 @@ onMounted(async () => {
     width: 180px;
     height: 160px;
   }
+}
+
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 2rem;
+  color: white;
+  font-size: 1.2rem;
+}
+
+.error-state {
+  color: #ef4444;
 }
 </style>
