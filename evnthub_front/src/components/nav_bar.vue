@@ -1,66 +1,126 @@
 <template>
   <div>
-  <button class="burger" @click="isOpen = !isOpen">
+    <button class="burger" @click="toggleMenu">
       <img src="@/assets/icons/burger.svg" alt="menu" />
     </button>
+    <div v-if="isOpen" class="overlay" @click="closeMenu"></div>
     <aside :class="['sidebar', { open: isOpen }]">
-    <div class="logo">
-      <router-link to="/lenta"><img src="/src/assets/logo.svg" alt="Logo" class="logo_img" /></router-link>
-      <div class="iconss">
-        <nav class="nav-icons">
-          <!-- Все кнопки по умолчанию -->
-          <template v-if="!settings.isCompactMode">
-            <router-link to="/lenta"><img src="@/assets/icons/waves.png" alt="Waves" /></router-link>
-            <router-link to="/user"><img src="@/assets/icons/user.png" alt="User" /></router-link>
-            <router-link to="/event_create"><img src="@/assets/icons/calendar.png" alt="Calendar" /></router-link>
-            <router-link to="/stats"><img src="@/assets/icons/star.png" alt="Star" /></router-link>
-            <router-link to="/team"><img src="@/assets/icons/stats.png" alt="Stats" /></router-link>
-          </template>
-
-          <!-- Компактный режим -->
-          <template v-else>
-            <!-- Режим участника -->
-            <template v-if="settings.userMode === 'participant'">
-              <router-link to="/lenta"><img src="@/assets/icons/waves.png" alt="Waves" /></router-link>
-              <router-link to="/user"><img src="@/assets/icons/user.png" alt="User" /></router-link>
-              <router-link to="/team"><img src="@/assets/icons/stats.png" alt="Stats" /></router-link>
+      <div class="logo">
+        <router-link to="/lenta"><img src="/src/assets/logo.svg" alt="Logo" class="logo_img" /></router-link>
+        <div class="iconss">
+          <nav class="nav-icons">
+            <!-- Все кнопки по умолчанию -->
+            <template v-if="!settings.isCompactMode">
+              <router-link to="/lenta" class="nav-item">
+                <img src="@/assets/icons/waves.png" alt="Waves" />
+                <span class="nav-label">Лента</span>
+              </router-link>
+              <router-link to="/user" class="nav-item">
+                <img src="@/assets/icons/user.png" alt="User" />
+                <span class="nav-label">Профиль</span>
+              </router-link>
+              <router-link to="/event_create" class="nav-item">
+                <img src="@/assets/icons/calendar.png" alt="Calendar" />
+                <span class="nav-label">Создать </span>
+              </router-link>
+              <router-link to="/stats" class="nav-item">
+                <img src="@/assets/icons/star.png" alt="Star" />
+                <span class="nav-label">Статистика</span>
+              </router-link>
+              <router-link to="/team" class="nav-item">
+                <img src="@/assets/icons/stats.png" alt="Stats" />
+                <span class="nav-label">Команда</span>
+              </router-link>
             </template>
 
-            <!-- Режим создателя -->
+            <!-- Компактный режим -->
             <template v-else>
-              <router-link to="/user"><img src="@/assets/icons/user.png" alt="User" /></router-link>
-              <router-link to="/event_create"><img src="@/assets/icons/calendar.png" alt="Calendar" /></router-link>
-              <router-link to="/stats"><img src="@/assets/icons/star.png" alt="Star" /></router-link>
+              <!-- Режим участника -->
+              <template v-if="settings.userMode === 'participant'">
+                <router-link to="/lenta" class="nav-item">
+                  <img src="@/assets/icons/waves.png" alt="Waves" />
+                  <span class="nav-label">Лента</span>
+                </router-link>
+                <router-link to="/user" class="nav-item">
+                  <img src="@/assets/icons/user.png" alt="User" />
+                  <span class="nav-label">Профиль</span>
+                </router-link>
+                <router-link to="/team" class="nav-item">
+                  <img src="@/assets/icons/stats.png" alt="Stats" />
+                  <span class="nav-label">Команда</span>
+                </router-link>
+              </template>
+
+              <!-- Режим создателя -->
+              <template v-else>
+                <router-link to="/user" class="nav-item">
+                  <img src="@/assets/icons/user.png" alt="User" />
+                  <span class="nav-label">Профиль</span>
+                </router-link>
+                <router-link to="/event_create" class="nav-item">
+                  <img src="@/assets/icons/calendar.png" alt="Calendar" />
+                  <span class="nav-label">Создать</span>
+                </router-link>
+                <router-link to="/stats" class="nav-item">
+                  <img src="@/assets/icons/star.png" alt="Star" />
+                  <span class="nav-label">Статистика</span>
+                </router-link>
+              </template>
             </template>
-          </template>
-        </nav>
+          </nav>
+        </div>
       </div>
-    </div>
-    <div class="bottom-icon">
-      <router-link to="/settings"><img src="@/assets/icons/settings.png" alt="Settings" /></router-link>
-      <!-- <img src="@/assets/icons/theme-toggle.svg" alt="Theme toggle" /> -->
-    </div>
-  </aside>
-</div>
+      <div class="bottom-icon">
+        <router-link to="/settings" class="nav-item">
+          <img src="@/assets/icons/settings.png" alt="Settings" />
+          <span class="nav-label">Настройки</span>
+        </router-link>
+      </div>
+    </aside>
+  </div>
 </template>
 
 <script setup>
 import { useSettingsStore } from '@/stores/settings'
-
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const isOpen = ref(false)
 const settings = useSettingsStore()
+
+const toggleMenu = () => {
+  isOpen.value = !isOpen.value
+  if (isOpen.value) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+}
+
+const closeMenu = () => {
+  isOpen.value = false
+  document.body.style.overflow = ''
+}
+
+const handleEscape = (e) => {
+  if (e.key === 'Escape' && isOpen.value) {
+    closeMenu()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleEscape)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscape)
+  document.body.style.overflow = ''
+})
 </script>
 
 <style scoped>
-
-
-
-.sidebar.open {
-  left: 0;
+.burger {
+  display: none;
 }
-
 
 .sidebar {
   position: fixed;
@@ -76,10 +136,15 @@ const settings = useSettingsStore()
   border-right: 1px solid #333;
   z-index: 1000;
   transition: all 0.3s ease;
+  overflow: visible;
 }
 
 .sidebar:hover {
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar.open {
+  left: 0;
 }
 
 .logo {
@@ -113,8 +178,8 @@ const settings = useSettingsStore()
   justify-content: center;
   align-items: center;
   padding: 0.5rem 0;
-  /* color: #888; */
   text-decoration: none;
+  color: #888;
   transition: all 0.3s ease;
   position: relative;
 }
@@ -147,12 +212,51 @@ const settings = useSettingsStore()
   transform: scale(1.1);
 }
 
+.nav-label {
+  position: absolute;
+  left: 95px;
+  top: 50%;
+  transform: translateY(-50%) translateX(-10px);
+  opacity: 0;
+  pointer-events: none;
+  font-size: 1.1rem;
+  color: #888;
+  white-space: nowrap;
+  background-color: #2c2c2c;
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 1001;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.nav-item:hover .nav-label {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.nav-item:hover .nav-label,
+.nav-item.router-link-active .nav-label {
+  color: #9333ea;
+}
+
 .bottom-icon {
   margin-top: auto;
   margin-bottom: 1rem;
   width: 100%;
   display: flex;
   justify-content: center;
+  padding: 0;
+}
+
+.bottom-icon .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  text-decoration: none;
+  color: #888;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
 .bottom-icon img {
@@ -168,6 +272,22 @@ const settings = useSettingsStore()
   filter: brightness(1.3);
 }
 
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  color: #888;
+  transition: all 0.3s ease;
+}
+
+.nav-item:hover .nav-label,
+.nav-item.router-link-active .nav-label {
+  color: #9333ea;
+}
+
 @keyframes slideIn {
   from {
     transform: translateY(-50%) translateX(-10px);
@@ -179,92 +299,145 @@ const settings = useSettingsStore()
     opacity: 1;
   }
 }
+
 /* Кнопка-бургер */
 
-.burger img {
-  width: 24px;
-  height: 24px;
-}
-
-
-@media (max-width: 768px) {
-  .burger {
-  position: relative;
-  top: 1rem;
-  left: 1rem;
-  background: none;
-  border: none;
-  z-index: 1101;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem;
-  background-color: #2c2c2c;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.3);
-}
-
-  .sidebar {
-    position: fixed;
-    align-items: center;
-    width: 5rem;
-    top: 0;
-    left: -100%;
-    overflow-y: auto;
-    /* width: 250px; */
-    height: 100vh;
-    transition: left 0.3s ease;
-    background: #1a1a1a;
-    flex-direction: column;
-    z-index: 1100;
-    padding: 2rem 1rem;
-  }
-
-  .sidebar.open {
-    left: 0;
-
-  }
 .overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+  z-index: 1099;
+  opacity: 0;
+  animation: fadeIn 0.3s ease forwards;
 }
-  .nav-icons {
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .burger {
+    display: flex;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1101;
+    background-color: #2c2c2c;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
+    padding: 0.5rem;
+  }
+
+  .burger:hover {
+    transform: scale(1.05);
+  }
+
+  .burger img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 80%;
+    max-width: 300px;
+    height: 100vh;
+    background: #1a1a1a;
     flex-direction: column;
-    gap: 1.5rem;
-    max-height: 100%;
+    z-index: 1100;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    padding: 2rem 1rem;
     align-items: flex-start;
+    overflow-y: auto;
+    padding-top: 4rem;
+    overflow: hidden;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
   }
 
   .logo {
-    flex-direction: column;
+    width: 100%;
     align-items: flex-start;
+    padding-left: 1rem;
   }
-  .logo_img{
-    margin-top: 3rem;
 
+  .logo_img {
+    margin-bottom: 3rem;
+  }
+
+  .nav-icons {
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    align-items: flex-start;
+    margin-top: 1rem;
+  }
+
+  .nav-icons .nav-item {
+    padding: 0.8rem 1rem;
+    justify-content: flex-start;
+    width: 100%;
+    gap: 1rem;
+  }
+
+  .nav-icons .nav-label {
+    display: block;
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    background-color: transparent;
+    padding: 0;
+    margin-left: 0;
+  }
+
+  .nav-icons img {
+    width: 30px;
+    height: 30px;
   }
 
   .bottom-icon {
-    margin-top: 1.5rem;
-    gap: 1.5rem;
-    max-height: 100%;
-    align-items: flex-start;
+    margin-top: auto;
+    margin-bottom: 1rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 1rem 0;
   }
-  .nav-icons {
-  gap: 0.7rem; /* было 1.5rem */
+
+  .bottom-icon .nav-item {
+    width: auto;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .bottom-icon .nav-label {
+    display: none;
+  }
+
+  .bottom-icon img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .overlay {
+    /* display: block; */
+  }
 }
-
-
-
-}
-
-/* .nav-icons img {
-  width: 32px;
-  height: 32px;
-} */
-
 
 .iconss {
   border: none;
