@@ -1,5 +1,9 @@
 <template>
-  <aside class="sidebar">
+  <div>
+  <button class="burger" @click="isOpen = !isOpen">
+      <img src="@/assets/icons/burger.svg" alt="menu" />
+    </button>
+    <aside :class="['sidebar', { open: isOpen }]">
     <div class="logo">
       <router-link to="/lenta"><img src="/src/assets/logo.svg" alt="Logo" class="logo_img" /></router-link>
       <div class="iconss">
@@ -37,15 +41,27 @@
       <!-- <img src="@/assets/icons/theme-toggle.svg" alt="Theme toggle" /> -->
     </div>
   </aside>
+</div>
 </template>
 
 <script setup>
 import { useSettingsStore } from '@/stores/settings'
 
+import { ref } from 'vue'
+
+const isOpen = ref(false)
 const settings = useSettingsStore()
 </script>
 
 <style scoped>
+
+
+
+.sidebar.open {
+  left: 0;
+}
+
+
 .sidebar {
   position: fixed;
   left: 0;
@@ -163,54 +179,56 @@ const settings = useSettingsStore()
     opacity: 1;
   }
 }
+/* Кнопка-бургер */
+.burger {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  background: none;
+  border: none;
+  z-index: 1101;
+  display: none;
+}
+
 
 @media (max-width: 768px) {
+  .burger {
+    display: block;
+  }
+
   .sidebar {
-    width: 100%;
-    height: 60px;
-    flex-direction: row;
-    padding: 0;
-    bottom: auto;
-    top: auto;
+    position: fixed;
+    
+    width: 5rem;
+    top: 0;
+    left: -100%;
+    /* width: 250px; */
+    height: 100hv;
+    transition: left 0.3s ease;
+    background: #1a1a1a;
+    flex-direction: column;
+    z-index: 1100;
+    padding: 2rem 1rem;
   }
 
-  .logo {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 0 1rem;
-  }
-
-  .logo_img {
-    margin-bottom: 0;
+  .sidebar.open {
+    left: 0;
+    
   }
 
   .nav-icons {
-    flex-direction: row;
-    justify-content: center;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: flex-start;
   }
 
-  .nav-icons a {
-    padding: 0.5rem;
-  }
-
-  .nav-icons a:hover {
-    transform: translateY(-5px);
-  }
-
-  .nav-icons a.router-link-active::before {
-    width: 24px;
-    height: 4px;
-    top: auto;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    border-radius: 4px 4px 0 0;
+  .logo {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .bottom-icon {
-    margin: 0;
-    padding: 0 1rem;
+    margin-top: auto;
   }
 }
 
