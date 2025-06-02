@@ -79,6 +79,22 @@
                                 <p>Онлайн</p>
                             </div>
                         </div>
+                        <div v-if="selectedEventId" class="qr-section">
+                            <h3>QR-код мероприятия</h3>
+                            <qrcode-vue :value="`https://event-hub.space/event/${selectedEventId}`" 
+                            :size="160"   
+                            :background="'#150A1E'" 
+                            :foreground="'#BDAEFF'" 
+                            :level="'H'" 
+                            :margin="2" 
+                            :image-settings='imageSettings'
+                            ref="qrRef"
+                                class="custom-qr" />
+                            <div class="qr-actions">
+                                <button @click="downloadQR">Скачать QR</button>
+                                <button @click="copyLink">Скопировать ссылку</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="group-section">
@@ -167,13 +183,28 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import api from '@/utils/axios'
 import NavBar from '@/components/nav_bar.vue'
+import QrcodeVue from 'qrcode.vue'
+
+const qrRef = ref(null)
+const selectedEventId = ref(null)
+
 
 const imageFile = ref(null)
 const imagePreview = ref('')
 const suggestions = ref([])
 const fieldMode = ref('participant')
-const selectedEventId = ref(null)
+
 const upcomingEvents = ref([])
+
+
+
+const imageSettings = ref({
+  src: new URL('@/assets/logo.svg', import.meta.url).href,
+  width: 30,
+  height: 30,
+  excavate: true
+})
+
 
 const event = ref({
     title: '',
@@ -263,7 +294,7 @@ const handleAddressInput = async () => {
             {
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: 'Token b19db130def2050e565e36e7a7f6259dae6bb911'
+                    Authorization: 'Token b19db130def2050e565e36e7a7f6259dae6bb911'// сохранить в .env
                 }
             }
         )
@@ -752,9 +783,68 @@ const confirmDelete = async (event) => {
         }
     }
 }
+
+
+
+
+
+const downloadQR = () => {
+  const canvas = document.querySelector('.qr-section canvas')
+  if (!canvas) return
+  const link = document.createElement('a')
+  link.href = canvas.toDataURL('image/png')
+  link.download = 'qr-code.png'
+  link.click()
+}
+
+
+const copyLink = () => {
+    const link = `https://event-hub.space/event/${selectedEventId.value}`
+    navigator.clipboard.writeText(link).then(() => alert('Ссылка скопирована!'))
+}
 </script>
 
 <style scoped>
+.qr-section {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #333;
+    border-radius: 8px;
+}
+
+.qr-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.qr-actions button {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.qr-actions button:hover {
+    background: #2563eb;
+}
+
+.custom-qr {
+  border: 8px solid #8a879f;
+  border-radius: 16px;
+  padding: 8px;
+  background: #8a879f;
+  display: inline-block;
+  border-radius: 8px;
+}
+
+
+
 .group_or_solo {
     width: 30rem;
     display: flex;

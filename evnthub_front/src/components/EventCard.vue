@@ -196,7 +196,7 @@ const goToEventDetails = () => {
   flex: 1;
   background: #eee;
   color: black;
-  min-width: 50%;
+  min-width: 45%;
   height: auto;
   max-height: 35rem;
   padding: 1rem;
