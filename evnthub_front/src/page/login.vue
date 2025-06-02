@@ -20,9 +20,13 @@
                     <input v-model="email" class="auth-input" name="username" autocomplete="username"
                       placeholder="Email" aria-label="Email" />
                   </div>
-                  <div class="form-group">
-                    <input v-model="password" type="password" class="auth-input" placeholder="Password" name="password"
-                      autocomplete="current-password" aria-label="Password" />
+                  <div class="form-group  password-group">
+                    <input v-model="password" :type="showPassword ? 'text' : 'password'" class="auth-input"
+                      placeholder="Password" name="password" autocomplete="current-password" aria-label="Password" />
+
+                    <span class="password-toggle" @click="showPassword = !showPassword">
+                      <img :src="showPassword ? eyeOff : eye" alt="Показать пароль" class="eye-icon" />
+                    </span>
                   </div>
                   <button type="submit" class="login-submit" :class="{ active: isValid, disabled: !isValid }"
                     aria-label="Login">
@@ -43,10 +47,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import api from '@/utils/axios'
-
+import eye from '@/assets/login_icons/eye.svg'
+import eyeOff from '@/assets/login_icons/eye-off.svg'
 const email = ref('')
 const password = ref('')
 const error = ref(null)
+const showPassword = ref(false)
 
 const isValid = computed(() => email.value && password.value)
 
@@ -81,6 +87,45 @@ const login = async () => {
 
 
 <style scoped>
+
+
+.auth-input {
+  width: 100%; /* вместо max-width */
+  padding: 0.6rem 0.5rem;
+   /* добавим место под иконку */
+  font-size: 16px;
+  color: #dfdddd;
+  background: transparent;
+  border: 1px solid #555;
+  border-radius: 24px;
+  outline: none;
+  transition: all 0.3s ease-in;
+}
+
+.password-group {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.eye-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+  transition: 0.2s;
+}
+.eye-icon:hover {
+  opacity: 1;
+}
+
+
+
 .form-group {
   padding-bottom: 8px;
 }
@@ -151,12 +196,11 @@ const login = async () => {
 .login-form {
   display: flex;
   flex-direction: column;
-  padding-left: 40px;
-  padding-top: 4vh;
+padding: 3rem 2rem;
   align-items: end;
 }
 
-.auth-input {
+/* .auth-input {
   max-width: 70%;
   padding: 10px 15px;
   font-size: 16px;
@@ -167,7 +211,7 @@ const login = async () => {
   border-radius: 24px;
   outline: none;
   transition: all 0.3s ease-in;
-}
+} */
 
 .auth-input:focus {
   border-color: #888;
