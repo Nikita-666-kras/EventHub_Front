@@ -18,13 +18,13 @@
 
                     <div class="date-location">
                         <div class="date">
-                            <img src="@/assets/login_icons/calendar.png" alt="calendar icon" />
+                            <img src="@/assets/login_icons/calendar_white.png" alt="calendar icon" />
                             <p><strong>Начало:</strong> {{ formatDate(event.startDateAndTime) }}</p>
                             <p><strong>Конец:</strong> {{ formatDate(event.endDateAndTime) }}</p>
                         </div>
 
                         <div class="location">
-                            <img src="@/assets/login_icons/location.png" alt="location icon" />
+                            <img src="@/assets/login_icons/location_white.png" alt="location icon" />
                             <p>{{ event.eventAddress }}</p>
                         </div>
                     </div>
