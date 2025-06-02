@@ -81,15 +81,9 @@
                         </div>
                         <div v-if="selectedEventId" class="qr-section">
                             <h3>QR-код мероприятия</h3>
-                            <qrcode-vue :value="`https://event-hub.space/event/${selectedEventId}`" 
-                            :size="160"   
-                            :background="'#150A1E'" 
-                            :foreground="'#BDAEFF'" 
-                            :level="'H'" 
-                            :margin="2" 
-                            :image-settings='imageSettings'
-                            ref="qrRef"
-                                class="custom-qr" />
+                            <qrcode-vue :value="`https://event-hub.space/event/${selectedEventId}`" :size="160"
+                                :background="'#150A1E'" :foreground="'#BDAEFF'" :level="'H'" :margin="2"
+                                :image-settings='imageSettings' ref="qrRef" class="custom-qr" />
                             <div class="qr-actions">
                                 <button @click="downloadQR">Скачать QR</button>
                                 <button @click="copyLink">Скопировать ссылку</button>
@@ -125,28 +119,45 @@
                     <div class="dynamic-fields">
                         <h3>Собираемые Данные — {{ fieldMode === 'group' ? 'Группа' : 'Участник' }}</h3>
 
+                        <div class="field-templates">
+                            <h4>Шаблоны полей</h4>
+                            <div class="template-buttons">
+                                <button v-for="(template, index) in fieldTemplates[fieldMode]" :key="index"
+                                    @click="addFieldFromTemplate(template)" class="template-btn">
+                                    {{ template.label }}
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="field-item" v-for="(field, index) in event.fields[fieldMode]" :key="index">
-                            <input v-model="field.label" placeholder="Название поля" />
-                            <select v-model="field.type">
-                                <option value="text">Текст</option>
-                                <option value="number">Число</option>
-                                <option value="date">Дата</option>
-                                <option value="boolean">Да/Нет</option>
-                                <option value="select">Выбор</option>
-                            </select>
+                            <div class="field-header">
+                                <input v-model="field.label" placeholder="Название поля" />
+                                <select v-model="field.type">
+                                    <option value="text">Текст</option>
+                                    <option value="number">Число</option>
+                                    <option value="date">Дата</option>
+                                    <option value="boolean">Да/Нет</option>
+                                    <option value="select">Выбор</option>
+                                </select>
+                                <button @click="removeField(index)" class="remove-btn">×</button>
+                            </div>
 
-                            <input v-if="field.type === 'select'" v-model="field.options"
-                                placeholder="Варианты через запятую" />
-                            <input v-if="field.type === 'text'" disabled placeholder="Текст..." />
-                            <input v-if="field.type === 'number'" disabled type="number" placeholder="123" />
-                            <input v-if="field.type === 'date'" disabled type="date" />
-                            <select v-if="field.type === 'boolean'" disabled>
-                                <option>Да</option>
-                                <option>Нет</option>
-                            </select>
+                            <div class="field-body">
+                                <input v-if="field.type === 'select'" v-model="field.options"
+                                    placeholder="Варианты через запятую" />
+                                <input v-if="field.type === 'text'" disabled placeholder="Текст..." />
+                                <input v-if="field.type === 'number'" disabled type="number" placeholder="123" />
+                                <input v-if="field.type === 'date'" disabled type="date" />
+                                <select v-if="field.type === 'boolean'" disabled>
+                                    <option>Да</option>
+                                    <option>Нет</option>
+                                </select>
+                            </div>
 
-                            <input v-model="field.description" placeholder="Описание" />
-                            <button @click="removeField(index)">×</button>
+                            <div class="field-footer">
+                                <input v-model="field.description" placeholder="Описание поля" />
+                                <input v-model="field.hint" placeholder="Подсказка для заполнения" class="hint-input" />
+                            </div>
                         </div>
 
                         <button class="add-field" @click="addField">Добавить поле</button>
@@ -159,8 +170,18 @@
                     </div>
                 </div>
 
-                <div class="event-sidebar">
-                    <h4>Мои мероприятия</h4>
+                <!-- Добавляем бургер-кнопку для мобильной версии -->
+                <button class="burger-menu" @click="toggleSidebar" :class="{ active: isSidebarOpen }">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+
+                <!-- Модифицируем сайдбар -->
+                <div class="event-sidebar" :class="{ 'mobile-open': isSidebarOpen }">
+                    <div class="sidebar-header">
+                        <h4>Мои мероприятия</h4>
+                    </div>
                     <div class="event-sidebar-scroll">
                         <div class="upcoming-event" v-for="ev in upcomingEvents" :key="ev.id" @click="selectEvent(ev)"
                             :class="{ active: selectedEventId === ev.id }">
@@ -173,13 +194,16 @@
                     </div>
                     <button class="submit-btn" @click="resetForm">Новое мероприятие</button>
                 </div>
+
+                <!-- Добавляем оверлей для мобильной версии -->
+                <div class="sidebar-overlay" v-if="isSidebarOpen" @click="toggleSidebar"></div>
             </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import axios from 'axios'
 import api from '@/utils/axios'
 import NavBar from '@/components/nav_bar.vue'
@@ -188,7 +212,6 @@ import QrcodeVue from 'qrcode.vue'
 const qrRef = ref(null)
 const selectedEventId = ref(null)
 
-
 const imageFile = ref(null)
 const imagePreview = ref('')
 const suggestions = ref([])
@@ -196,15 +219,12 @@ const fieldMode = ref('participant')
 
 const upcomingEvents = ref([])
 
-
-
 const imageSettings = ref({
-  src: new URL('@/assets/logo.svg', import.meta.url).href,
-  width: 30,
-  height: 30,
-  excavate: true
+    src: new URL('@/assets/logo.svg', import.meta.url).href,
+    width: 30,
+    height: 30,
+    excavate: true
 })
-
 
 const event = ref({
     title: '',
@@ -259,7 +279,57 @@ const isValidImageFormat = (file) => {
     return validTypes.includes(file.type)
 }
 
-const handleImageUpload = (e) => {
+// Добавляем функцию для оптимизации изображения
+const optimizeImage = async (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            const img = new Image()
+            img.onload = () => {
+                const canvas = document.createElement('canvas')
+                let width = img.width
+                let height = img.height
+
+                // Максимальные размеры
+                const MAX_WIDTH = 1200
+                const MAX_HEIGHT = 1200
+
+                // Изменяем размеры, сохраняя пропорции
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width
+                        width = MAX_WIDTH
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height
+                        height = MAX_HEIGHT
+                    }
+                }
+
+                canvas.width = width
+                canvas.height = height
+
+                const ctx = canvas.getContext('2d')
+                ctx.drawImage(img, 0, 0, width, height)
+
+                // Конвертируем в WebP с качеством 0.8
+                canvas.toBlob((blob) => {
+                    resolve(new File([blob], file.name.replace(/\.[^/.]+$/, '.webp'), {
+                        type: 'image/webp'
+                    }))
+                }, 'image/webp', 0.8)
+            }
+            img.onerror = reject
+            img.src = e.target.result
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+    })
+}
+
+// Модифицируем handleImageUpload
+const handleImageUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
 
@@ -273,16 +343,21 @@ const handleImageUpload = (e) => {
         return
     }
 
-    imageFile.value = file
-    const reader = new FileReader()
-    reader.onload = () => {
-        imagePreview.value = reader.result
-    }
-    reader.onerror = () => {
-        alert('Ошибка при чтении файла')
+    try {
+        // Показываем превью оригинального изображения
+        const reader = new FileReader()
+        reader.onload = () => {
+            imagePreview.value = reader.result
+        }
+        reader.readAsDataURL(file)
+
+        // Оптимизируем изображение
+        imageFile.value = await optimizeImage(file)
+    } catch (err) {
+        console.error('Ошибка при обработке изображения:', err)
+        alert('Ошибка при обработке изображения')
         imagePreview.value = ''
     }
-    reader.readAsDataURL(file)
 }
 
 const handleAddressInput = async () => {
@@ -507,6 +582,114 @@ const validateDate = () => {
     }
 }
 
+const hasUnsavedChanges = ref(false)
+const autosaveInterval = ref(null)
+
+// Функция для сохранения черновика
+const saveDraft = () => {
+    if (!hasUnsavedChanges.value) return
+
+    const draft = {
+        event: event.value,
+        imagePreview: imagePreview.value,
+        fieldMode: fieldMode.value,
+        timestamp: new Date().toISOString()
+    }
+
+    localStorage.setItem('eventDraft', JSON.stringify(draft))
+    hasUnsavedChanges.value = false
+}
+
+// Функция для загрузки черновика
+const loadDraft = () => {
+    const draft = localStorage.getItem('eventDraft')
+    if (!draft) return
+
+    try {
+        const { event: draftEvent, imagePreview: draftImage, fieldMode: draftMode, timestamp } = JSON.parse(draft)
+
+        // Проверяем, не устарел ли черновик (старше 24 часов)
+        const draftDate = new Date(timestamp)
+        const now = new Date()
+        if (now - draftDate > 24 * 60 * 60 * 1000) {
+            localStorage.removeItem('eventDraft')
+            return
+        }
+
+        if (confirm('Найден черновик мероприятия. Хотите загрузить его?')) {
+            event.value = draftEvent
+            imagePreview.value = draftImage
+            fieldMode.value = draftMode
+            hasUnsavedChanges.value = true
+        } else {
+            localStorage.removeItem('eventDraft')
+        }
+    } catch (err) {
+        console.error('Ошибка при загрузке черновика:', err)
+        localStorage.removeItem('eventDraft')
+    }
+}
+
+// Следим за изменениями в форме
+watch([event, imagePreview, fieldMode], () => {
+    hasUnsavedChanges.value = true
+}, { deep: true })
+
+// Автосохранение каждые 30 секунд
+onMounted(() => {
+    loadDraft()
+    autosaveInterval.value = setInterval(saveDraft, 30000)
+})
+
+// Очистка при размонтировании
+onBeforeUnmount(() => {
+    if (autosaveInterval.value) {
+        clearInterval(autosaveInterval.value)
+    }
+    saveDraft()
+})
+
+// Обработчик перед уходом со страницы
+window.addEventListener('beforeunload', (e) => {
+    if (hasUnsavedChanges.value) {
+        e.preventDefault()
+        e.returnValue = ''
+    }
+})
+
+// Модифицируем функцию resetForm
+const resetForm = () => {
+    if (hasUnsavedChanges.value) {
+        if (!confirm('У вас есть несохраненные изменения. Вы уверены, что хотите сбросить форму?')) {
+            return
+        }
+    }
+
+    selectedEventId.value = null
+    imageFile.value = null
+    imagePreview.value = ''
+    suggestions.value = []
+    event.value = {
+        title: '',
+        description: '',
+        date: '',
+        time: '',
+        endTime: '',
+        maxParticipants: '',
+        location: '',
+        grouping: 'Группы и соло',
+        format: 'offline',
+        fields: {
+            participant: [],
+            group: []
+        }
+    }
+    fieldMode.value = 'participant'
+    hasUnsavedChanges.value = false
+    localStorage.removeItem('eventDraft')
+}
+
+// Модифицируем функцию submitEvent
 const submitEvent = async () => {
     try {
         validateDate()
@@ -642,6 +825,10 @@ const submitEvent = async () => {
             }
         }
 
+        // После успешного сохранения
+        hasUnsavedChanges.value = false
+        localStorage.removeItem('eventDraft')
+
         alert(selectedEventId.value ? 'Мероприятие успешно обновлено!' : 'Мероприятие успешно создано!')
         await loadEvents()
         resetForm()
@@ -712,29 +899,6 @@ const selectEvent = async (ev) => {
     }
 }
 
-const resetForm = () => {
-    selectedEventId.value = null
-    imageFile.value = null
-    imagePreview.value = ''
-    suggestions.value = []
-    event.value = {
-        title: '',
-        description: '',
-        date: '',
-        time: '',
-        endTime: '',
-        maxParticipants: '',
-        location: '',
-        grouping: 'Группы и соло',
-        format: 'offline',
-        fields: {
-            participant: [],
-            group: []
-        }
-    }
-    fieldMode.value = 'participant'
-}
-
 const confirmDelete = async (event) => {
     if (!confirm(`Вы уверены, что хотите удалить мероприятие "${event.eventName}"?`)) {
         return
@@ -784,24 +948,93 @@ const confirmDelete = async (event) => {
     }
 }
 
-
-
-
-
 const downloadQR = () => {
-  const canvas = document.querySelector('.qr-section canvas')
-  if (!canvas) return
-  const link = document.createElement('a')
-  link.href = canvas.toDataURL('image/png')
-  link.download = 'qr-code.png'
-  link.click()
+    const canvas = document.querySelector('.qr-section canvas')
+    if (!canvas) return
+    const link = document.createElement('a')
+    link.href = canvas.toDataURL('image/png')
+    link.download = 'qr-code.png'
+    link.click()
 }
-
 
 const copyLink = () => {
     const link = `https://event-hub.space/event/${selectedEventId.value}`
     navigator.clipboard.writeText(link).then(() => alert('Ссылка скопирована!'))
 }
+
+const fieldTemplates = {
+    participant: [
+        {
+            label: 'Имя',
+            type: 'text',
+            description: 'Введите ваше полное имя',
+            hint: 'Например: Иван Иванов'
+        },
+        {
+            label: 'Email',
+            type: 'text',
+            description: 'Ваш email для связи',
+            hint: 'Например: example@mail.com'
+        },
+        {
+            label: 'Телефон',
+            type: 'text',
+            description: 'Контактный номер телефона',
+            hint: 'Например: +7 (999) 123-45-67'
+        },
+        {
+            label: 'Возраст',
+            type: 'number',
+            description: 'Ваш возраст',
+            hint: 'Введите число от 18 до 100'
+        }
+    ],
+    group: [
+        {
+            label: 'Название команды',
+            type: 'text',
+            description: 'Название вашей команды',
+            hint: 'Например: Команда Победителей'
+        },
+        {
+            label: 'Количество участников',
+            type: 'number',
+            description: 'Сколько человек в команде',
+            hint: 'Введите число от 2 до 10'
+        },
+        {
+            label: 'Уровень подготовки',
+            type: 'select',
+            options: 'Начинающий,Средний,Продвинутый',
+            description: 'Общий уровень подготовки команды',
+            hint: 'Выберите один из вариантов'
+        }
+    ]
+}
+
+const addFieldFromTemplate = (template) => {
+    event.value.fields[fieldMode.value].push({ ...template })
+}
+
+// Добавляем состояние для бургер-меню
+const isSidebarOpen = ref(false)
+
+// Функция для переключения сайдбара
+const toggleSidebar = () => {
+    isSidebarOpen.value = !isSidebarOpen.value
+    // Блокируем скролл body когда сайдбар открыт
+    document.body.style.overflow = isSidebarOpen.value ? 'hidden' : ''
+}
+
+// Закрываем сайдбар при изменении размера окна
+onMounted(() => {
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768 && isSidebarOpen.value) {
+            isSidebarOpen.value = false
+            document.body.style.overflow = ''
+        }
+    })
+})
 </script>
 
 <style scoped>
@@ -835,15 +1068,13 @@ const copyLink = () => {
 }
 
 .custom-qr {
-  border: 8px solid #8a879f;
-  border-radius: 16px;
-  padding: 8px;
-  background: #8a879f;
-  display: inline-block;
-  border-radius: 8px;
+    border: 8px solid #8a879f;
+    border-radius: 16px;
+    padding: 8px;
+    background: #8a879f;
+    display: inline-block;
+    border-radius: 8px;
 }
-
-
 
 .group_or_solo {
     width: 30rem;
@@ -1374,5 +1605,294 @@ button.create:disabled {
 .delete-btn:hover {
     background: #b91c1c;
     transform: translateY(-2px);
+}
+
+.field-templates {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #2a2a2a;
+    border-radius: 8px;
+}
+
+.field-templates h4 {
+    margin: 0 0 0.8rem 0;
+    color: #ccc;
+}
+
+.template-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.template-btn {
+    background: #444;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.template-btn:hover {
+    background: #555;
+    transform: translateY(-2px);
+}
+
+.field-item {
+    background: #2a2a2a;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.field-header {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.8rem;
+}
+
+.field-body {
+    margin-bottom: 0.8rem;
+}
+
+.field-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.hint-input {
+    font-size: 0.9rem;
+    color: #999;
+}
+
+.remove-btn {
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-btn:hover {
+    background: #b91c1c;
+    transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+    .event-create-page {
+        padding: 1rem;
+        margin-left: 0;
+    }
+
+    .main-section {
+        flex-direction: column;
+    }
+
+    .event-form {
+        width: 100%;
+        padding: 1rem;
+        border-radius: 10px;
+    }
+
+    .event-sidebar {
+        width: 100%;
+        margin-top: 1rem;
+        border-radius: 10px;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .header {
+        flex-direction: column;
+    }
+
+    .image-upload {
+        margin-right: 0;
+        margin-bottom: 1rem;
+    }
+
+    .image-preview {
+        width: 100%;
+        height: 200px;
+    }
+
+    .heade-title {
+        width: 100%;
+    }
+
+    .format-icons {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .group_or_solo {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .view-switch {
+        margin-left: 0;
+        margin-top: 1rem;
+    }
+
+    .field-header {
+        flex-direction: column;
+    }
+
+    .field-body {
+        flex-direction: column;
+    }
+
+    .field-footer {
+        flex-direction: column;
+    }
+
+    .template-buttons {
+        flex-direction: column;
+    }
+
+    .template-btn {
+        width: 100%;
+    }
+
+    .time-fields {
+        flex-direction: column;
+    }
+
+    .time-item {
+        width: 100%;
+    }
+
+    .suggestions-list {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .event-form {
+        padding: 0.8rem;
+    }
+
+    .image-preview {
+        height: 150px;
+    }
+
+    .field-item {
+        padding: 0.8rem;
+    }
+
+    .template-btn {
+        padding: 0.3rem 0.6rem;
+    }
+}
+
+.burger-menu {
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 30px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    position: fixed;
+    right: 20px;
+    top: 20px;
+    z-index: 1000;
+}
+
+.burger-menu span {
+    width: 100%;
+    height: 2px;
+    background: #fff;
+    transition: all 0.3s ease;
+}
+
+.burger-menu.active span:nth-child(1) {
+    transform: translateY(11px) rotate(45deg);
+}
+
+.burger-menu.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.burger-menu.active span:nth-child(3) {
+    transform: translateY(-11px) rotate(-45deg);
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #222;
+    border-bottom: 1px solid #444;
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+}
+
+@media (max-width: 768px) {
+    .burger-menu {
+        display: flex;
+    }
+
+    .event-sidebar {
+        position: fixed;
+        right: -100%;
+        top: 0;
+        bottom: 0;
+        width: 80%;
+        max-width: 300px;
+        z-index: 999;
+        transition: right 0.3s ease;
+        border-radius: 0;
+    }
+
+    .event-sidebar.mobile-open {
+        right: 0;
+    }
+
+    .sidebar-overlay {
+        display: block;
+    }
+
+    .event-sidebar h4 {
+        position: static;
+        padding: 0;
+        margin: 0;
+    }
+
+    .event-sidebar-scroll {
+        height: calc(100vh - 120px);
+    }
+}
+
+@media (max-width: 480px) {
+    .event-sidebar {
+        width: 100%;
+        max-width: none;
+    }
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <div>
     <button class="burger" @click="toggleMenu">
-      <img src="@/assets/icons/burger.svg" alt="menu" />
+      <img src="@/assets/icons/home.svg" alt="home" />
     </button>
     <div v-if="isOpen" class="overlay" @click="closeMenu"></div>
     <aside :class="['sidebar', { open: isOpen }]">
