@@ -175,11 +175,11 @@ const loadAnswers = async (eventId) => {
 
     if (selectedField.value.source === 'participant') {
       // Загружаем ответы участников
-      const res = await api.get(`/api/responses/participant/${eventId}`)
+      const res = await api.get(`/responses/participant/${eventId}`)
       responses = res.data || []
     } else {
       // Загружаем ответы команд
-      const res = await api.get(`/api/responses/team/${eventId}`)
+      const res = await api.get(`/responses/team/${eventId}`)
       responses = res.data || []
     }
 

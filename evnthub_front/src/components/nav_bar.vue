@@ -180,30 +180,39 @@ const settings = useSettingsStore()
   }
 }
 /* Кнопка-бургер */
-.burger {
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  background: none;
-  border: none;
-  z-index: 1101;
-  display: none;
+
+.burger img {
+  width: 24px;
+  height: 24px;
 }
 
 
 @media (max-width: 768px) {
   .burger {
-    display: block;
-  }
+  position: relative;
+  top: 1rem;
+  left: 1rem;
+  background: none;
+  border: none;
+  z-index: 1101;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background-color: #2c2c2c;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
 
   .sidebar {
     position: fixed;
-    
+    align-items: center;
     width: 5rem;
     top: 0;
     left: -100%;
+    overflow-y: auto;
     /* width: 250px; */
-    height: 100hv;
+    height: 100vh;
     transition: left 0.3s ease;
     background: #1a1a1a;
     flex-direction: column;
@@ -213,12 +222,18 @@ const settings = useSettingsStore()
 
   .sidebar.open {
     left: 0;
-    
-  }
 
+  }
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
   .nav-icons {
     flex-direction: column;
     gap: 1.5rem;
+    max-height: 100%;
     align-items: flex-start;
   }
 
@@ -226,11 +241,30 @@ const settings = useSettingsStore()
     flex-direction: column;
     align-items: flex-start;
   }
+  .logo_img{
+    margin-top: 3rem;
+
+  }
 
   .bottom-icon {
-    margin-top: auto;
+    margin-top: 1.5rem;
+    gap: 1.5rem;
+    max-height: 100%;
+    align-items: flex-start;
   }
+  .nav-icons {
+  gap: 0.7rem; /* было 1.5rem */
 }
+
+
+
+}
+
+/* .nav-icons img {
+  width: 32px;
+  height: 32px;
+} */
+
 
 .iconss {
   border: none;
