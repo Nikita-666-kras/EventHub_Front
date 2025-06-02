@@ -2,7 +2,16 @@
     <div class="event-details-wrapper">
         <NavBar />
 
-        <div class="event-details fade-in">
+        <button class="back-button" @click="$router.back()">
+            <i class="fas fa-arrow-left"></i>
+            Назад
+        </button>
+
+        <div v-if="loading" class="loading-overlay">
+            <div class="spinner"></div>
+        </div>
+
+        <div v-else class="event-details fade-in">
             <div class="event-header slide-in">
                 <div class="left">
                     <div class="banner-container">
@@ -10,16 +19,29 @@
                     </div>
                     <div class="right">
                         <h2 class="title">{{ event.eventName }}</h2>
+                        <div class="event-status" :class="getEventStatusClass()">
+                            {{ getEventStatus() }}
+                        </div>
                         <div class="creator">
                             <img class="creator-avatar" src="@/assets/icons/user_black.png" />
                             <p>{{ creator.name }}</p>
                         </div>
                     </div>
 
+                    <div class="participants-progress">
+                        <div class="progress-bar"
+                            :style="{ width: (event.currentParticipantQuantity / event.maxParticipantNumber * 100) + '%' }">
+                        </div>
+                        <span class="progress-text">
+                            {{ event.currentParticipantQuantity }} / {{ event.maxParticipantNumber }} участников
+                        </span>
+                    </div>
+
                     <div class="date-location">
                         <div class="date">
                             <img src="@/assets/login_icons/calendar_white.png" alt="calendar icon" />
                             <p><strong>Начало:</strong> {{ formatDate(event.startDateAndTime) }}</p>
+                            <p class="relative-time">{{ getRelativeTime(event.startDateAndTime) }}</p>
                             <p><strong>Конец:</strong> {{ formatDate(event.endDateAndTime) }}</p>
                         </div>
 
@@ -36,8 +58,6 @@
                         <p><strong>Текущее количество участников:</strong> {{ event.currentParticipantQuantity }}</p>
                         <p><strong>Формат:</strong> {{ event.online ? 'Онлайн' : 'Оффлайн' }}</p>
                         <p v-if="event.isRecurring"><strong>Повторяемое мероприятие</strong></p>
-                        <p v-if="event.qrCode"><strong>QR-код:</strong> <img :src="event.qrCode" alt="QR code"
-                                class="qr-code" /></p>
                         <div v-if="event.fields && event.fields.length">
                             <strong>Дополнительные поля:</strong>
                             <ul>
@@ -50,15 +70,32 @@
 
                     <form class="custom-fields-form" @submit.prevent="register">
                         <div v-for="field in customFields" :key="field.name" class="custom-field">
-                            <label :for="field.name">{{ field.name }} <span v-if="field.required">*</span></label>
+                            <label :for="field.name">
+                                {{ field.name }}
+                                <span v-if="field.required">*</span>
+                                <span class="field-hint" v-if="field.hint">{{ field.hint }}</span>
+                            </label>
                             <input v-model="customFieldValues[field.name]" :id="field.name"
-                                :type="field.type === 'number' ? 'number' : 'text'" :required="field.required" />
+                                :type="field.type === 'number' ? 'number' : 'text'" :required="field.required"
+                                @input="validateField(field)" :class="{ 'error': fieldErrors[field.name] }" />
+                            <span class="error-message" v-if="fieldErrors[field.name]">
+                                {{ fieldErrors[field.name] }}
+                            </span>
                         </div>
-                        <button class="register-btn" type="submit">Зарегистрироваться</button>
+                        <button class="register-btn" type="submit" :disabled="!isFormValid">
+                            Зарегистрироваться
+                        </button>
                     </form>
+
+                    <div class="share-buttons">
+                        <button @click="shareEvent('vk')" class="share-btn vk">
+                            <i class="fab fa-vk"></i> ВКонтакте
+                        </button>
+                        <button @click="shareEvent('telegram')" class="share-btn telegram">
+                            <i class="fab fa-telegram"></i> Telegram
+                        </button>
+                    </div>
                 </div>
-
-
             </div>
 
             <div class="event-content">
@@ -74,16 +111,20 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/utils/axios'
 import NavBar from '@/components/nav_bar.vue'
+import { useToast } from 'vue-toastification'
 
 const route = useRoute()
 const event = ref({})
 const creator = ref({})
 const customFields = ref([])
 const customFieldValues = ref({})
+const loading = ref(true)
+const fieldErrors = ref({})
+const toast = useToast()
 
 console.log(event)
 
@@ -104,11 +145,74 @@ onMounted(async () => {
             })
         } catch (e) {
             console.error('Ошибка загрузки кастомных полей:', e)
+            toast.error('Ошибка загрузки дополнительных полей')
         }
     } catch (e) {
         console.error('Ошибка загрузки данных:', e)
+        toast.error('Ошибка загрузки данных события')
+    } finally {
+        loading.value = false
     }
 })
+
+const getEventStatus = () => {
+    const now = new Date()
+    const start = new Date(event.value.startDateAndTime)
+    const end = new Date(event.value.endDateAndTime)
+
+    if (now < start) return 'Предстоящее'
+    if (now > end) return 'Завершенное'
+    return 'Активное'
+}
+
+const getEventStatusClass = () => {
+    const status = getEventStatus()
+    return {
+        'upcoming': status === 'Предстоящее',
+        'active': status === 'Активное',
+        'ended': status === 'Завершенное'
+    }
+}
+
+const getRelativeTime = (date) => {
+    const now = new Date()
+    const eventDate = new Date(date)
+    const diff = eventDate - now
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+    if (days > 0) return `через ${days} ${days === 1 ? 'день' : 'дня'}`
+    if (days < 0) return `${Math.abs(days)} ${Math.abs(days) === 1 ? 'день' : 'дня'} назад`
+    return 'сегодня'
+}
+
+const validateField = (field) => {
+    const value = customFieldValues.value[field.name]
+    if (field.required && !value) {
+        fieldErrors.value[field.name] = 'Это поле обязательно'
+    } else if (field.type === 'number' && isNaN(value)) {
+        fieldErrors.value[field.name] = 'Введите число'
+    } else {
+        fieldErrors.value[field.name] = ''
+    }
+}
+
+const isFormValid = computed(() => {
+    return !Object.values(fieldErrors.value).some(error => error)
+})
+
+const shareEvent = (platform) => {
+    const eventUrl = `https://event-hub.space/event/${route.params.id}`
+    const title = event.value.eventName
+
+    switch (platform) {
+        case 'vk':
+            window.open(`https://vk.com/share.php?url=${encodeURIComponent(eventUrl)}&title=${encodeURIComponent(title)}`)
+            break
+        case 'telegram':
+            window.open(`https://t.me/share/url?url=${encodeURIComponent(eventUrl)}&text=${encodeURIComponent(title)}`)
+            break
+    }
+}
 
 const formatDate = (iso) => {
     const date = new Date(iso)
@@ -145,10 +249,10 @@ const register = async () => {
             participant_id: userId,
             responses: customFieldValues.value
         })
-        alert('Вы успешно зарегистрированы!')
+        toast.success('Вы успешно зарегистрированы!')
     } catch (e) {
         console.error('Ошибка при регистрации:', e)
-        alert('Ошибка при регистрации')
+        toast.error('Ошибка при регистрации')
     }
 }
 </script>
@@ -484,5 +588,213 @@ const register = async () => {
 .custom-field input:focus {
     border-color: #9333ea;
     outline: none;
+}
+
+.back-button {
+    background: #2a2a2a;
+    border: 1px solid #333;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.back-button:hover {
+    background: #333;
+    transform: translateX(-2px);
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #9333ea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.event-status {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.event-status.upcoming {
+    background: #3b82f6;
+}
+
+.event-status.active {
+    background: #22c55e;
+}
+
+.event-status.ended {
+    background: #ef4444;
+}
+
+.participants-progress {
+    background: #2a2a2a;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.progress-bar {
+    height: 8px;
+    background: linear-gradient(90deg, #9333ea, #3b82f6);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #888;
+}
+
+.relative-time {
+    font-size: 0.9rem;
+    color: #888;
+    margin-top: 0.2rem;
+}
+
+.field-hint {
+    font-size: 0.8rem;
+    color: #888;
+    margin-left: 0.5rem;
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+}
+
+.custom-field input.error {
+    border-color: #ef4444;
+}
+
+.share-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.share-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.share-btn.vk {
+    background: #4C75A3;
+}
+
+.share-btn.telegram {
+    background: #0088cc;
+}
+
+.share-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 768px) {
+    .event-details-wrapper {
+        padding: 1rem;
+        margin-left: 0;
+    }
+
+    .event-details {
+        padding: 1rem;
+    }
+
+    .date-location {
+        flex-direction: column;
+    }
+
+    .share-buttons {
+        flex-direction: column;
+    }
+
+    .share-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.qr-section {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #333;
+    border-radius: 8px;
+}
+
+.qr-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.qr-actions button {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.qr-actions button:hover {
+    background: #2563eb;
+}
+
+.custom-qr {
+    border: 8px solid #8a879f;
+    border-radius: 16px;
+    padding: 8px;
+    background: #8a879f;
+    display: inline-block;
+    border-radius: 8px;
+    margin: 1rem 0;
 }
 </style>
