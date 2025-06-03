@@ -95,9 +95,14 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.lenta-page {
+  /* Стили для всей страницы ленты, если нужны */
+  overflow-x: hidden;
+  /* Убираем горизонтальную прокрутку на уровне страницы */
+}
+
 .main-wrapper {
-  margin-left: 80px;
-  padding: 2rem;
+  padding: 1rem;
   min-height: 100vh;
   background: #150A1E;
   animation: fadeIn 0.5s ease-out;
@@ -109,6 +114,9 @@ onUnmounted(() => {
   gap: 1.5rem;
   max-width: 800px;
   margin: 0 auto;
+  /* Центрирование контейнера карточек */
+  padding: 0 1rem;
+  /* Добавляем внутренние отступы, чтобы контент не прилипал к краям */
 }
 
 .event-card {
@@ -116,6 +124,11 @@ onUnmounted(() => {
   transform: translateY(20px);
   animation: slideUp 0.5s ease-out forwards;
   transition: all 0.3s ease;
+  width: 100%;
+  border-radius: 16px;
+  /* Карточки занимают всю доступную ширину контейнера */
+  box-sizing: border-box;
+  /* Учитываем padding и border в общей ширине */
 }
 
 .event-card:hover {
@@ -226,11 +239,15 @@ onUnmounted(() => {
 
   .events-container {
     gap: 1rem;
+    padding: 0;
+    /* Убираем padding, так как карточки будут иметь свои отступы */
   }
 
   .event-card {
-    margin: 0 -1rem;
-    /* Растягиваем карточки на всю ширину */
+    margin-bottom: 1rem;
+    /* Добавляем отступ между карточками */
+    padding: 0 1rem;
+    /* Добавляем внутренние отступы к самим карточкам */
     border-radius: 0;
   }
 
@@ -258,6 +275,7 @@ onUnmounted(() => {
   /* Оптимизация анимаций для мобильных устройств */
   @media (prefers-reduced-motion: reduce) {
     .event-card {
+      border-radius: 16px;
       animation: none;
       opacity: 1;
       transform: none;
@@ -276,19 +294,28 @@ onUnmounted(() => {
 /* Добавляем стили для планшетов */
 @media (min-width: 769px) and (max-width: 1024px) {
   .main-wrapper {
-    margin-left: 0;
+    margin-left: 80px;
+    /* Предполагаем, что NavBAr появляется на планшетах и выше */
     padding: 1.5rem;
   }
 
   .events-container {
     max-width: 600px;
+    padding: 0 1rem;
   }
 }
 
 /* Добавляем стили для больших экранов */
 @media (min-width: 1025px) {
+  .main-wrapper {
+    margin-left: 80px;
+    /* Учитываем ширину NavBAr */
+    padding: 2rem;
+  }
+
   .events-container {
     max-width: 800px;
+    padding: 0 1rem;
   }
 }
 </style>

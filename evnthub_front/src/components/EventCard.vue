@@ -78,18 +78,24 @@ const goToEventDetails = () => {
   padding: 1rem;
   color: white;
   margin-bottom: 2rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .title_event {
-  width: 27rem;
+  width: 100%;
+  max-width: 27rem;
   text-align: center;
   font-size: large;
+  order: 2;
 }
 
 .avatar {
@@ -101,18 +107,20 @@ const goToEventDetails = () => {
 
 .location {
   display: flex;
+  align-items: flex-start;
 }
 
 .location img {
   width: 30px;
   height: 30px;
   margin-right: 1rem;
+  flex-shrink: 0;
 }
 
 .location p {
   word-wrap: break-word;
   word-break: break-word;
-  max-width: 50%;
+  max-width: 100%;
 }
 
 .user-info {
@@ -124,17 +132,23 @@ const goToEventDetails = () => {
   border: 0.5rem;
   flex: 1;
   margin-left: 1rem;
+  min-width: 0;
+  order: 1;
 }
 
 .nickname {
   font-weight: bold;
-  margin: 0 2rem;
+  margin: 0 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .menu-icon {
-  margin-left: 12rem;
+  margin-left: auto;
   font-size: 1.5rem;
   cursor: pointer;
+  order: 3;
 }
 
 .body {
@@ -154,7 +168,7 @@ const goToEventDetails = () => {
 }
 
 .date {
-  max-width: 50%;
+  max-width: 100%;
   display: flex;
   align-items: center;
 }
@@ -163,19 +177,20 @@ const goToEventDetails = () => {
   width: 30px;
   height: 30px;
   margin-right: 1rem;
+  flex-shrink: 0;
 }
 
 .left {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .preview {
-  width: 400px;
-  height: 235px;
-  min-width: 300px;
-  min-height: 200px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16/9;
   background: gray;
   border-radius: 8px;
   object-fit: cover;
@@ -185,6 +200,7 @@ const goToEventDetails = () => {
 
 .info {
   margin: 0.5rem 0 0.5rem 0.8rem;
+  width: 100%;
 }
 
 .info p {
@@ -196,7 +212,7 @@ const goToEventDetails = () => {
   flex: 1;
   background: #eee;
   color: black;
-  min-width: 45%;
+  width: 100%;
   height: auto;
   max-height: 35rem;
   padding: 1rem;
@@ -223,24 +239,54 @@ const goToEventDetails = () => {
 }
 
 .event-card {
+  border-radius: 16px;
   animation: fadeIn 0.5s ease-out;
 }
 
 @media (max-width: 768px) {
   .event-card {
-    margin: 1rem;
+    border-radius: 16px;
+    margin: 0.5rem;
+    padding: 0.75rem;
   }
 
   .body {
     flex-direction: column;
+    padding: 8px;
+    gap: 0.75rem;
   }
 
   .preview {
-    height: 200px;
+    aspect-ratio: 16/9;
   }
 
   .right {
-    padding: 1rem;
+    padding: 0.75rem;
+    max-height: none;
+  }
+
+  .title_event {
+    font-size: 1.1rem;
+  }
+
+  .user-info {
+    margin-top: 0.5rem;
+    margin-left: 0.5rem;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .info {
+    margin: 0.5rem 0;
+  }
+
+  .date img,
+  .location img {
+    width: 24px;
+    height: 24px;
   }
 }
 </style>

@@ -3,7 +3,7 @@
         <NavBar />
 
         <button class="back-button" @click="$router.back()">
-            <i class="fas fa-arrow-left"></i>
+
             Назад
         </button>
 
@@ -262,9 +262,10 @@ const register = async () => {
     background: #150a1e;
     color: white;
     min-height: 100vh;
-    padding: 2rem;
+    padding: 1rem;
     margin-left: 80px;
     animation: fadeIn 0.5s ease-out;
+    position: relative;
 }
 
 .event-details {
@@ -737,12 +738,21 @@ const register = async () => {
 
 @media (max-width: 768px) {
     .event-details-wrapper {
-        padding: 1rem;
+        padding: 1rem 1rem 1rem 1rem;
         margin-left: 0;
+    }
+
+    .back-button {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        margin-bottom: 0;
+        z-index: 10;
     }
 
     .event-details {
         padding: 1rem;
+        margin-top: 3rem;
     }
 
     .date-location {
