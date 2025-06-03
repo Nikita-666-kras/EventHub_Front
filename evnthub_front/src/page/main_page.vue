@@ -141,10 +141,18 @@ const splideOptions = {
   autoplay: true,
   pauseOnHover: true,
   arrows: true,
-  pagination: false, // отключает точки
+  pagination: false,
   breakpoints: {
-    1024: { perPage: 2 },
-    600: { perPage: 1 }
+    1024: {
+      perPage: 2,
+      arrows: true
+    },
+    768: {
+      perPage: 1,
+      arrows: false,
+      gap: '1rem',
+      padding: { left: '1rem', right: '1rem' }
+    }
   }
 }
 
@@ -708,5 +716,230 @@ footer:hover .line {
   color: #bbb;
   font-size: 1rem;
   margin-bottom: 1.2rem;
+}
+
+/* Мобильные устройства */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0.5rem 1rem;
+  }
+
+  .left-header {
+    gap: 20px;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .banner {
+    padding: 2rem 1rem;
+  }
+
+  .banner-content {
+    max-width: 100%;
+  }
+
+  .firstSection {
+    flex-direction: column;
+  }
+
+  .banner h1 {
+    font-size: 1.5rem;
+  }
+
+  .banner-image {
+    width: 100%;
+    height: 30vw;
+    margin: 1rem 0;
+  }
+
+  .description-Block {
+    padding: 0 5%;
+    margin-bottom: 10vw;
+  }
+
+  .first_desciption {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .banner-description-image {
+    width: 100%;
+    height: 40vw;
+    margin: 1rem 0;
+  }
+
+  .footer_div {
+    flex-direction: column;
+    width: 90vw;
+    gap: 2rem;
+  }
+
+  .footer-contacts {
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .network {
+    display: flex;
+    justify-content: center;
+  }
+
+  .network img {
+    width: 3rem;
+    margin: 0.5rem;
+  }
+
+  .line {
+    display: none;
+  }
+
+  .carousel-card {
+    min-height: 300px;
+    margin: 0 1rem;
+  }
+
+  .carousel-info h3 {
+    font-size: 1.1rem;
+  }
+
+  .carousel-info p {
+    font-size: 0.9rem;
+  }
+
+  .carousel-section {
+    margin: 0;
+    padding: 0;
+  }
+
+  .carousel-title {
+    font-size: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .event-carousel {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .carousel-card {
+    min-height: 280px;
+    margin: 0;
+    border-radius: 12px;
+  }
+
+  .carousel-img {
+    height: 160px;
+  }
+
+  .carousel-info {
+    padding: 1rem;
+  }
+
+  .carousel-info h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .carousel-info p {
+    font-size: 0.9rem;
+    margin-bottom: 0.8rem;
+  }
+
+  /* Скрываем стрелки навигации */
+  :deep(.splide__arrow) {
+    display: none;
+  }
+}
+
+/* Планшеты */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .banner-content {
+    max-width: 70vw;
+  }
+
+  .banner-image {
+    width: 70vw;
+    height: 20vw;
+  }
+
+  .description-Block {
+    padding: 0 7%;
+  }
+
+  .banner-description-image {
+    width: 85vw;
+    height: 30vw;
+  }
+
+  .footer_div {
+    width: 90vw;
+  }
+
+  .footer-contacts {
+    width: 30vw;
+  }
+}
+
+/* Десктоп */
+@media (min-width: 1025px) {
+  .banner-content {
+    max-width: 50vw;
+  }
+
+  .banner-image {
+    width: 60vw;
+    height: 14vw;
+  }
+
+  .description-Block {
+    padding: 0 10%;
+  }
+
+  .banner-description-image {
+    width: 76vw;
+    height: 25vw;
+  }
+
+  .footer_div {
+    width: 80vw;
+  }
+
+  .footer-contacts {
+    width: 20vw;
+  }
+}
+
+/* Поддержка prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+
+  .navbar,
+  .banner,
+  .banner-content,
+  .firstSection,
+  .banner h1,
+  .banner p,
+  .StartButton,
+  .banner-image,
+  .events,
+  .events-header h2,
+  .first_desciption,
+  footer,
+  .carousel-card {
+    animation: none;
+    transition: none;
+  }
+
+  .carousel-card:hover,
+  .event-card:hover,
+  .banner-description-image:hover,
+  .network img:hover,
+  .li-footer:hover {
+    transform: none;
+  }
 }
 </style>

@@ -87,21 +87,6 @@ const login = async () => {
 
 
 <style scoped>
-
-
-.auth-input {
-  width: 100%; /* вместо max-width */
-  padding: 0.6rem 0.5rem;
-   /* добавим место под иконку */
-  font-size: 16px;
-  color: #dfdddd;
-  background: transparent;
-  border: 1px solid #555;
-  border-radius: 24px;
-  outline: none;
-  transition: all 0.3s ease-in;
-}
-
 .password-group {
   position: relative;
 }
@@ -120,11 +105,10 @@ const login = async () => {
   opacity: 0.7;
   transition: 0.2s;
 }
+
 .eye-icon:hover {
   opacity: 1;
 }
-
-
 
 .form-group {
   padding-bottom: 8px;
@@ -137,20 +121,18 @@ const login = async () => {
   height: 100vh;
   width: 100vw;
   background: #150A1E;
-  /* или твой фон */
 }
 
 .auth-container {
   display: flex;
   min-height: 400px;
-  min-width: auto;
+  min-width: 150px;
   border-radius: 40px;
   flex-direction: column;
   background: #282828;
   justify-content: center;
   align-items: center;
 }
-
 
 .top-section {
   display: flex;
@@ -162,7 +144,6 @@ const login = async () => {
 
 .close_img {
   width: 15px;
-
 }
 
 .logo-section {
@@ -196,22 +177,21 @@ const login = async () => {
 .login-form {
   display: flex;
   flex-direction: column;
-padding: 3rem 2rem;
+  padding: 3rem 2rem;
   align-items: end;
 }
 
-/* .auth-input {
-  max-width: 70%;
-  padding: 10px 15px;
+.auth-input {
+  width: 100%;
+  padding: 0.6rem 0.5rem;
   font-size: 16px;
-
   color: #dfdddd;
   background: transparent;
   border: 1px solid #555;
   border-radius: 24px;
   outline: none;
   transition: all 0.3s ease-in;
-} */
+}
 
 .auth-input:focus {
   border-color: #888;
@@ -220,7 +200,7 @@ padding: 3rem 2rem;
 
 .login-submit {
   height: 32px;
-  width: 72px;
+  width: auto;
   border-radius: 17px;
   border: 1px solid var(--text-primary);
   background: transparent;
@@ -238,5 +218,118 @@ padding: 3rem 2rem;
   border-color: #444;
   color: #444;
   pointer-events: none;
+}
+
+/* Мобильные устройства */
+@media (max-width: 768px) {
+  .outer-conteiner {
+    padding: 0;
+  }
+
+  .auth-container {
+    min-height: 100vh;
+    border-radius: 0;
+    width: 100%;
+  }
+
+  .logo-section {
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  .login-icon {
+    width: 180px;
+    height: 180px;
+    margin-bottom: 1rem;
+  }
+
+  .vertically {
+    display: none;
+  }
+
+  .horizontally {
+    padding: 10px;
+    letter-spacing: 0.3rem;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .login-form {
+    padding: 1rem;
+    align-items: center;
+    width: 100%;
+  }
+
+  .auth-input {
+    font-size: 16px;
+    padding: 0.8rem 1rem;
+  }
+
+  .login-submit {
+    width: 100%;
+    margin-top: 1rem;
+    margin-right: 0;
+  }
+
+  .top-section {
+    padding: 16px;
+  }
+
+  .close_img {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Планшеты */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .auth-container {
+    max-width: 700px;
+  }
+
+  .login-icon {
+    width: 200px;
+    height: 200px;
+  }
+
+  .login-form {
+    padding: 2rem;
+  }
+}
+
+/* Десктоп */
+@media (min-width: 1025px) {
+  .auth-container {
+    max-width: 900px;
+  }
+}
+
+/* Анимации */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-container {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Поддержка prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .auth-container {
+    animation: none;
+  }
+
+  .auth-input,
+  .login-submit {
+    transition: none;
+  }
 }
 </style>

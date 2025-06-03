@@ -1,6 +1,13 @@
 <template>
   <div class="statistics-wrapper">
     <NavBar />
+    <div class="burger-menu-wrapper">
+      <button class="burger-menu" @click="toggleSidebar" :class="{ active: isSidebarOpen }">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
     <div class="statistics-page">
       <div class="main-content">
         <div class="stats-header">
@@ -65,7 +72,7 @@
         </div>
       </div>
 
-      <div class="sidebar_2">
+      <div class="sidebar_2" :class="{ 'mobile-open': isSidebarOpen }">
         <div class="sidebar_2_scroll">
           <h4 class="tile_sidebar">Мои мероприятия</h4>
           <div class="event-item" v-for="event in userEvents" :key="event.id" @click="selectEvent(event)"
@@ -76,6 +83,7 @@
         </div>
         <button class="create-btn">Создать мероприятие</button>
       </div>
+      <div class="sidebar-overlay" v-if="isSidebarOpen" @click="toggleSidebar"></div>
     </div>
   </div>
 </template>
@@ -94,6 +102,7 @@ const groupedParticipants = ref([])
 const selectedEvent = ref(null)
 const eventTitle = ref('')
 const userEvents = ref([])
+const isSidebarOpen = ref(false)
 
 const getUserIdFromToken = () => {
   const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
@@ -245,6 +254,11 @@ const aggregatedAnswers = computed(() => {
     .sort((a, b) => b.count - a.count) // Сортируем по убыванию количества
 })
 
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value
+  document.body.style.overflow = isSidebarOpen.value ? 'hidden' : ''
+}
+
 onMounted(async () => {
   const userId = getUserIdFromToken()
   if (!userId) return
@@ -256,6 +270,13 @@ onMounted(async () => {
   } catch (e) {
     console.error('Ошибка инициализации:', e)
   }
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768 && isSidebarOpen.value) {
+      isSidebarOpen.value = false
+      document.body.style.overflow = ''
+    }
+  })
 })
 </script>
 
@@ -686,6 +707,260 @@ onMounted(async () => {
 
   100% {
     box-shadow: 0 0 0 0 rgba(147, 51, 234, 0);
+  }
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .statistics-wrapper {
+    padding: 0;
+  }
+
+  .statistics-page {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .main-content {
+    width: 100%;
+    min-width: unset;
+    border-radius: 0;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .stats-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .stats-header h3 {
+    font-size: 1.5rem;
+    margin: 0;
+  }
+
+  .event-title {
+    font-size: 1.2rem;
+    padding: 0.8rem;
+  }
+
+  .chart-field-selector {
+    margin: 1rem 0;
+  }
+
+  .chart-field-selector select {
+    width: 100%;
+    padding: 0.8rem;
+    font-size: 1rem;
+  }
+
+  .view-switch {
+    width: 100%;
+    justify-content: center;
+    margin: 1rem 0;
+  }
+
+  .view-switch label {
+    padding: 0.8rem;
+  }
+
+  .view-switch img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .analytics-section {
+    padding: 1rem;
+  }
+
+  .analytics-section h4 {
+    font-size: 1.2rem;
+    margin: 0 0 1rem 0;
+  }
+
+  .stats-list {
+    gap: 1rem;
+  }
+
+  .stat-item {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .stat-label {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .stat-bar {
+    width: 100%;
+  }
+
+  .stat-count {
+    min-width: unset;
+    width: 100%;
+    text-align: left;
+  }
+
+  .participants-box {
+    padding: 1rem;
+  }
+
+  .participants-box h3 {
+    font-size: 1.2rem;
+    margin: 0 0 1rem 0;
+  }
+
+  .participant {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.8rem;
+  }
+
+  .participant button {
+    width: 100%;
+    padding: 0.8rem;
+    margin-top: 0.5rem;
+  }
+
+  .group {
+    margin-bottom: 1.5rem;
+  }
+
+  .group-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .group-member {
+    padding: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .sidebar_2 {
+    width: 100%;
+    min-width: unset;
+    max-width: none;
+    border-radius: 0;
+    position: fixed;
+    top: 60px;
+    right: -100%;
+    bottom: 0;
+    z-index: 999;
+    transition: right 0.3s ease;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .sidebar_2.mobile-open {
+    right: 0;
+  }
+
+  .sidebar_2_scroll {
+    height: calc(100vh - 120px);
+    padding: 1rem;
+  }
+
+  .tile_sidebar {
+    padding: 1.2rem;
+    font-size: 1.2rem;
+  }
+
+  .event-item {
+    padding: 1rem;
+  }
+
+  .event-item p {
+    margin: 0.5rem 0;
+    font-size: 1rem;
+  }
+
+  .create-btn {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .burger-menu {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 36px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    position: fixed;
+    right: 16px;
+    top: 16px;
+    z-index: 1000;
+    transition: all 0.3s ease;
+  }
+
+  .burger-menu-wrapper {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 60px;
+    background: rgba(34, 34, 34, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 999;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .burger-menu span {
+    width: 100%;
+    height: 3px;
+    background: #fff;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+  }
+
+  .burger-menu.active span:nth-child(1) {
+    transform: translateY(12px) rotate(45deg);
+  }
+
+  .burger-menu.active span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .burger-menu.active span:nth-child(3) {
+    transform: translateY(-12px) rotate(-45deg);
+  }
+
+  .burger-menu:active {
+    transform: scale(0.95);
+  }
+
+  .burger-menu:focus {
+    outline: none;
+  }
+
+  .burger-menu:focus-visible {
+    outline: 2px solid #9333ea;
+    outline-offset: 2px;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 998;
   }
 }
 </style>

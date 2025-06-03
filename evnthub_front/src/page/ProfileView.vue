@@ -1,6 +1,14 @@
 <template>
   <div class="profile-layout">
     <NavBar />
+    <div class="burger-menu-wrapper">
+      <button class="burger-menu" @click="toggleSidebar" :class="{ active: isSidebarOpen }">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+
     <div v-if="toast.visible" :class="['toast', toast.type]">
       {{ toast.message }}
     </div>
@@ -123,7 +131,7 @@
         </div>
       </div>
 
-      <div class="upcoming">
+      <div class="upcoming" :class="{ 'mobile-open': isSidebarOpen }">
         <h4>Грядущие мероприятия</h4>
         <div class="event-upcoming" v-for="event in upcomingEvents" :key="event.id">
           <p>{{ event.eventName }}</p>
@@ -133,6 +141,8 @@
           </div>
         </div>
       </div>
+
+      <div class="sidebar-overlay" v-if="isSidebarOpen" @click="toggleSidebar"></div>
     </div>
   </div>
 </template>
@@ -153,6 +163,25 @@ const isEditing = ref(false)
 const editedUser = ref({})
 const invitesPopupVisible = ref(false)
 const teamInvites = ref([])
+
+// Добавляем состояние для бургер-меню
+const isSidebarOpen = ref(false)
+
+// Функция для переключения сайдбара
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value
+  document.body.style.overflow = isSidebarOpen.value ? 'hidden' : ''
+}
+
+// Закрываем сайдбар при изменении размера окна
+onMounted(() => {
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768 && isSidebarOpen.value) {
+      isSidebarOpen.value = false
+      document.body.style.overflow = ''
+    }
+  })
+})
 
 // Computed property to calculate age from birthDate
 const calculatedAge = computed(() => {
@@ -867,25 +896,231 @@ onMounted(async () => {
   .profile-layout {
     margin-left: 0;
     width: 100%;
+    padding: 1rem;
   }
 
   .content {
     flex-direction: column;
+    width: 100%;
+    gap: 1rem;
   }
 
   .profile-card,
   .upcoming {
     width: 100%;
+    border-radius: 12px;
   }
 
   .profile-info {
     flex-direction: column;
     align-items: center;
+    gap: 2rem;
   }
 
   .avatar {
     width: 180px;
     height: 160px;
+  }
+
+  .events-columns {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .column {
+    width: 100%;
+  }
+
+  .line {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-layout {
+    padding: 0;
+  }
+
+  .content {
+    padding: 0;
+  }
+
+  .profile-card {
+    border-radius: 0;
+    padding: 1rem;
+  }
+
+  .profile-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .profile-info {
+    gap: 1.5rem;
+  }
+
+  .avatar {
+    width: 150px;
+    height: 150px;
+  }
+
+  .right {
+    width: 100%;
+  }
+
+  .field-row {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.8rem;
+  }
+
+  .field-row .label {
+    font-size: 0.9rem;
+    color: #888;
+  }
+
+  .section-subtitle {
+    font-size: 1.4rem;
+    margin: 2rem 0 1.5rem;
+  }
+
+  .event-card {
+    padding: 1rem;
+  }
+
+  .event-title {
+    font-size: 1rem;
+  }
+
+  .calendar {
+    gap: 0.5rem;
+  }
+
+  .icons {
+    width: 16px;
+    height: 16px;
+  }
+
+  .event-date,
+  .event-location {
+    font-size: 0.85rem;
+  }
+
+  .upcoming {
+    border-radius: 0;
+    margin-top: 1rem;
+  }
+
+  .upcoming h4 {
+    font-size: 1.2rem;
+    padding: 0.8rem;
+  }
+
+  .event-upcoming {
+    padding: 1rem;
+  }
+
+  .event-upcoming p {
+    font-size: 0.95rem;
+  }
+
+  .invites-popup {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    border-radius: 12px 12px 0 0;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .invite-card {
+    margin: 0.5rem 0;
+  }
+
+  .invite-card .buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .invite-card button {
+    width: 100%;
+    padding: 0.8rem;
+  }
+
+  .create {
+    width: 100%;
+    padding: 0.8rem;
+    font-size: 1rem;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .profile-layout {
+    padding: 1.5rem;
+  }
+
+  .profile-card {
+    padding: 2rem;
+  }
+
+  .avatar {
+    width: 200px;
+    height: 180px;
+  }
+
+  .events-columns {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .profile-card,
+  .upcoming,
+  .event-card,
+  .event-upcoming,
+  .avatar,
+  .field-row,
+  .imge {
+    animation: none;
+    transition: none;
+  }
+
+  .event-card:hover,
+  .event-upcoming:hover,
+  .avatar:hover,
+  .field-row:hover,
+  .imge:hover {
+    transform: none;
+  }
+}
+
+@media (min-width: 1025px) {
+  .content {
+    max-width: 1400px;
+  }
+
+  .profile-card {
+    max-width: 900px;
+  }
+
+  .upcoming {
+    max-width: 400px;
   }
 }
 
@@ -899,5 +1134,207 @@ onMounted(async () => {
 
 .error-state {
   color: #ef4444;
+}
+
+/* Добавляем стили для бургер-меню */
+.burger-menu {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 36px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.burger-menu-wrapper {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 60px;
+  background: rgba(34, 34, 34, 0.95);
+  backdrop-filter: blur(8px);
+  z-index: 999;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.burger-menu span {
+  width: 100%;
+  height: 3px;
+  background: #fff;
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+.burger-menu.active span:nth-child(1) {
+  transform: translateY(12px) rotate(45deg);
+}
+
+.burger-menu.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.burger-menu.active span:nth-child(3) {
+  transform: translateY(-12px) rotate(-45deg);
+}
+
+/* Добавляем стили для оверлея */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+}
+
+/* Обновляем медиа-запросы для мобильных устройств */
+@media (max-width: 768px) {
+  .burger-menu {
+    display: flex;
+  }
+
+  .burger-menu-wrapper {
+    display: block;
+  }
+
+  .profile-layout {
+    padding-top: 76px;
+    /* Добавляем отступ для шапки */
+  }
+
+  .content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .profile-card {
+    width: 100%;
+    border-radius: 0;
+    padding: 1rem;
+    margin: 0;
+  }
+
+  .upcoming {
+    position: fixed;
+    right: -100%;
+    top: 60px;
+    bottom: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
+    transition: right 0.3s ease;
+    z-index: 999;
+    background: #222;
+  }
+
+  .upcoming.mobile-open {
+    right: 0;
+  }
+
+  .sidebar-overlay {
+    display: block;
+  }
+
+  .profile-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .actions {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .profile-info {
+    align-items: center;
+  }
+
+  .field-row {
+    text-align: center;
+  }
+
+  .events-columns {
+    align-items: center;
+  }
+
+  .column {
+    text-align: center;
+  }
+
+  .event-card {
+    text-align: left;
+  }
+
+  .calendar {
+    justify-content: flex-start;
+  }
+
+  /* Центрируем попап приглашений */
+  .invites-popup {
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 400px;
+  }
+}
+
+/* Добавляем анимацию для шапки */
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.burger-menu-wrapper {
+  animation: slideDown 0.3s ease-out;
+}
+
+/* Добавляем стили для активного состояния бургер-меню */
+.burger-menu:active {
+  transform: scale(0.95);
+}
+
+.burger-menu:focus {
+  outline: none;
+}
+
+.burger-menu:focus-visible {
+  outline: 2px solid #9333ea;
+  outline-offset: 2px;
+}
+
+/* Обновляем стили для больших экранов */
+@media (min-width: 1025px) {
+  .content {
+    justify-content: center;
+    gap: 2rem;
+  }
+
+  .profile-card {
+    max-width: 900px;
+  }
+
+  .upcoming {
+    max-width: 400px;
+  }
 }
 </style>

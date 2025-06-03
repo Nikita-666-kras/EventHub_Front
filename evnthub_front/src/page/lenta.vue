@@ -107,6 +107,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .event-card {
@@ -155,6 +157,7 @@ onUnmounted(() => {
   font-style: italic;
   animation: fadeIn 0.5s ease-out;
   transition: color 0.3s ease;
+  padding: 0 1rem;
 }
 
 .no-more-events:hover {
@@ -209,6 +212,83 @@ onUnmounted(() => {
 
   100% {
     transform: scale(1);
+  }
+}
+
+/* Добавляем медиа-запросы для мобильных устройств */
+@media (max-width: 768px) {
+  .main-wrapper {
+    margin-left: 0;
+    padding: 1rem;
+    padding-top: 76px;
+    /* Добавляем отступ для шапки */
+  }
+
+  .events-container {
+    gap: 1rem;
+  }
+
+  .event-card {
+    margin: 0 -1rem;
+    /* Растягиваем карточки на всю ширину */
+    border-radius: 0;
+  }
+
+  .event-card:hover {
+    transform: none;
+    /* Убираем эффект при наведении на мобильных */
+  }
+
+  .loader-container {
+    padding: 1.5rem;
+  }
+
+  .loader {
+    width: 32px;
+    height: 32px;
+    border-width: 3px;
+  }
+
+  .no-more-events {
+    font-size: 0.9rem;
+    margin-top: 1.5rem;
+    padding: 0 1rem;
+  }
+
+  /* Оптимизация анимаций для мобильных устройств */
+  @media (prefers-reduced-motion: reduce) {
+    .event-card {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+
+    .event-card:nth-child(n) {
+      animation-delay: 0s;
+    }
+
+    .loader {
+      animation: none;
+    }
+  }
+}
+
+/* Добавляем стили для планшетов */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .main-wrapper {
+    margin-left: 0;
+    padding: 1.5rem;
+  }
+
+  .events-container {
+    max-width: 600px;
+  }
+}
+
+/* Добавляем стили для больших экранов */
+@media (min-width: 1025px) {
+  .events-container {
+    max-width: 800px;
   }
 }
 </style>

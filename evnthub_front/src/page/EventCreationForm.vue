@@ -2,13 +2,22 @@
     <div>
         <NavBar />
         <div class="event-create-page">
+            <!-- Добавляем шапку для бургер-меню -->
+            <div class="burger-menu-wrapper">
+                <button class="burger-menu" @click="toggleSidebar" :class="{ active: isSidebarOpen }">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
             <div class="main-section">
                 <div class="event-form">
                     <div class="header">
                         <div class="image-upload">
                             <label for="imageInput">
                                 <div class="image-preview"
-                                    :style="{ backgroundImage: imagePreview ? `url(${imagePreview})` : '' }">
+                                    :style="{ backgroundImage: imagePreview ? `url(${imagePreview})` : '' }"
+                                    title="Нажмите, чтобы загрузить изображение мероприятия (до 5MB, JPG, PNG, GIF, WebP)">
                                     <span v-if="!imagePreview">+</span>
                                 </div>
                             </label>
@@ -16,14 +25,17 @@
                         </div>
 
                         <div class="heade-title">
-                            <input class="event-title" v-model="event.title" placeholder="Название Мероприятия" />
-                            <textarea class="event-description" v-model="event.description" placeholder="Описание" />
+                            <input class="event-title" v-model="event.title" placeholder="Название Мероприятия"
+                                title="Введите краткое и понятное название мероприятия" />
+                            <textarea class="event-description" v-model="event.description" placeholder="Описание"
+                                title="Подробное описание мероприятия: что, где, когда, зачем" />
                         </div>
                     </div>
 
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Дата</label>
+                            <label>Дата <span class="info-icon"
+                                    title="Выберите дату проведения мероприятия. Не может быть в прошлом.">?</span></label>
                             <div class="time-item">
                                 <span class="time-label">дата начала мероприятия</span>
                                 <input type="date" v-model="event.date" :min="minDate" :max="maxDate"
@@ -32,7 +44,8 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Время</label>
+                            <label>Время <span class="info-icon"
+                                    title="Укажите время начала и окончания мероприятия.">?</span></label>
                             <div class="time-fields">
                                 <div class="time-item">
                                     <span class="time-label">Начало</span>
@@ -46,13 +59,16 @@
                             <p v-if="timeError" class="error-text">Время окончания должно быть позже начала</p>
                         </div>
                         <div class="form-group">
-                            <label>Макс кол-во участников</label>
-                            <input type="number" v-model="event.maxParticipants" />
+                            <label>Макс кол-во участников <span class="info-icon"
+                                    title="Укажите максимальное количество человек, которое может принять участие.">?</span></label>
+                            <input type="number" v-model="event.maxParticipants"
+                                title="Введите число, 0 - без ограничений" />
                         </div>
                         <div class="form-group location-wrapper">
-                            <label>Место</label>
+                            <label>Место <span class="info-icon"
+                                    title="Введите адрес или место проведения мероприятия. Для онлайн-мероприятий можно указать платформу.">?</span></label>
                             <input type="text" v-model="event.location" @input="handleAddressInput"
-                                placeholder="Адрес..." />
+                                placeholder="Адрес..." title="Начните вводить адрес для подсказок" />
                             <ul v-if="suggestions.length" class="suggestions-list">
                                 <li v-for="(s, i) in suggestions" :key="i" @click="selectSuggestion(s)">
                                     {{ s.value }}
@@ -62,7 +78,8 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Формат мероприятия</label>
+                        <label>Формат мероприятия <span class="info-icon"
+                                title="Выберите, будет мероприятие проходить оффлайн или онлайн.">?</span></label>
                         <div class="format-icons">
                             <div class="ww">
                                 <div class="format-option" :class="{ active: event.format === 'offline' }"
@@ -92,7 +109,8 @@
                     </div>
 
                     <div class="group-section">
-                        <label>Объединение в группу</label>
+                        <label>Объединение в группу <span class="info-icon"
+                                title="Определите, будут ли участники регистрироваться индивидуально, в группах, или возможны оба варианта.">?</span></label>
                         <div class="group_or_solo">
                             <div>
                                 <select v-model="event.grouping">
@@ -118,6 +136,8 @@
 
                     <div class="dynamic-fields">
                         <h3>Собираемые Данные — {{ fieldMode === 'group' ? 'Группа' : 'Участник' }}</h3>
+                        <p class="section-description">Добавьте поля для сбора дополнительной информации об участниках
+                            или группах.</p>
 
                         <div class="field-templates">
                             <h4>Шаблоны полей</h4>
@@ -170,14 +190,6 @@
                     </div>
                 </div>
 
-                <!-- Добавляем бургер-кнопку для мобильной версии -->
-                <button class="burger-menu" @click="toggleSidebar" :class="{ active: isSidebarOpen }">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-
-                <!-- Модифицируем сайдбар -->
                 <div class="event-sidebar" :class="{ 'mobile-open': isSidebarOpen }">
                     <div class="sidebar-header">
                         <h4>Мои мероприятия</h4>
@@ -195,7 +207,6 @@
                     <button class="submit-btn" @click="resetForm">Новое мероприятие</button>
                 </div>
 
-                <!-- Добавляем оверлей для мобильной версии -->
                 <div class="sidebar-overlay" v-if="isSidebarOpen" @click="toggleSidebar"></div>
             </div>
         </div>
@@ -1554,27 +1565,11 @@ button.create:disabled {
 
 @keyframes slideDown {
     from {
-        opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(-100%);
     }
 
     to {
-        opacity: 1;
         transform: translateY(0);
-    }
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.4);
-    }
-
-    70% {
-        box-shadow: 0 0 0 10px rgba(147, 51, 234, 0);
-    }
-
-    100% {
-        box-shadow: 0 0 0 0 rgba(147, 51, 234, 0);
     }
 }
 
@@ -1690,139 +1685,337 @@ button.create:disabled {
 
 @media (max-width: 768px) {
     .event-create-page {
-        padding: 1rem;
+        padding: 0.5rem;
         margin-left: 0;
     }
 
     .main-section {
         flex-direction: column;
+        position: relative;
+        width: 100%;
+        max-width: 100%;
     }
 
     .event-form {
         width: 100%;
         padding: 1rem;
         border-radius: 10px;
+        margin-bottom: 1rem;
+        font-size: 16px;
+        /* Базовый размер шрифта для лучшей читаемости */
     }
 
     .event-sidebar {
         width: 100%;
-        margin-top: 1rem;
-        border-radius: 10px;
+        max-width: none;
+        position: fixed;
+        right: -100%;
+        top: 60px;
+        bottom: 0;
+        z-index: 999;
+        transition: right 0.3s ease;
+        border-radius: 0;
+        box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+        background: #222;
+    }
+
+    .event-sidebar.mobile-open {
+        right: 0;
+    }
+
+    .sidebar-header {
+        padding: 1.2rem;
+        background: #222;
+        border-bottom: 1px solid #444;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .sidebar-header h4 {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #fff;
+        margin: 0;
+        text-align: center;
+    }
+
+    .event-sidebar-scroll {
+        padding: 1rem;
+        height: calc(100vh - 120px);
+        /* Учитываем высоту шапки и заголовка сайдбара */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .upcoming-event {
+        padding: 1.2rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        background: #2a2a2a;
+        border: 1px solid #444;
+        transition: all 0.3s ease;
+    }
+
+    .upcoming-event p {
+        margin: 0.5rem 0;
+        font-size: 1.1rem;
+        line-height: 1.4;
+    }
+
+    .upcoming-event p:first-child {
+        font-weight: 600;
+        font-size: 1.2rem;
+    }
+
+    .submit-btn {
+        position: sticky;
+        bottom: 0;
+        width: 100%;
+        padding: 1.2rem;
+        background: linear-gradient(to right, #3b82f6, #9333ea);
+        color: white;
+        border: none;
+        font-size: 1.2rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
     }
 
     .form-grid {
         grid-template-columns: 1fr;
+        gap: 1.5rem;
     }
 
     .header {
         flex-direction: column;
+        align-items: center;
     }
 
     .image-upload {
         margin-right: 0;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        width: 100%;
     }
 
     .image-preview {
         width: 100%;
         height: 200px;
+        margin: 0 auto;
     }
 
     .heade-title {
         width: 100%;
     }
 
+    .event-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        line-height: 1.4;
+        padding: 0.8rem;
+    }
+
+    .event-description {
+        font-size: 1rem;
+        line-height: 1.5;
+        min-height: 120px;
+        padding: 0.8rem;
+    }
+
     .format-icons {
-        flex-direction: column;
-        gap: 1rem;
+        flex-direction: row;
+        gap: 2rem;
+        justify-content: center;
+        flex-wrap: wrap;
     }
 
     .group_or_solo {
         flex-direction: column;
         width: 100%;
+        align-items: center;
     }
 
     .view-switch {
-        margin-left: 0;
-        margin-top: 1rem;
+        margin: 1rem 0;
+        width: 100%;
+        justify-content: center;
     }
 
     .field-header {
         flex-direction: column;
+        gap: 0.8rem;
     }
 
     .field-body {
         flex-direction: column;
+        gap: 0.8rem;
     }
 
     .field-footer {
         flex-direction: column;
+        gap: 0.8rem;
     }
 
     .template-buttons {
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.8rem;
     }
 
     .template-btn {
         width: 100%;
+        text-align: center;
+        padding: 0.8rem;
+        font-size: 1rem;
+        font-weight: 500;
     }
 
     .time-fields {
         flex-direction: column;
+        gap: 1rem;
     }
 
     .time-item {
         width: 100%;
     }
 
-    .suggestions-list {
-        width: 100%;
-    }
-}
-
-@media (max-width: 480px) {
-    .event-form {
+    .time-item input {
+        font-size: 1rem;
         padding: 0.8rem;
     }
 
-    .image-preview {
-        height: 150px;
+    .suggestions-list {
+        width: 100%;
+        max-height: 150px;
+    }
+
+    .section-description {
+        text-align: left;
+        margin-bottom: 1rem;
+        font-size: 1rem;
+        line-height: 1.5;
+        color: #ddd;
+    }
+
+    .create_event {
+        position: sticky;
+        bottom: 0;
+        background: #444;
+        padding: 1rem;
+        margin: 0 -1rem -1rem -1rem;
+        border-radius: 0 0 10px 10px;
+        box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .create {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1.2rem;
+        font-weight: 600;
     }
 
     .field-item {
-        padding: 0.8rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid #444;
+        background: #2a2a2a;
     }
 
-    .template-btn {
-        padding: 0.3rem 0.6rem;
+    .field-item input,
+    .field-item select {
+        font-size: 1rem;
+        padding: 0.8rem;
+        background: #333;
+        border: 1px solid #444;
+        border-radius: 6px;
+    }
+
+    .field-item input:focus,
+    .field-item select:focus {
+        border-color: #9333ea;
+        box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
+    }
+
+    .remove-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
+        background: #dc2626;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .remove-btn:active {
+        transform: scale(0.95);
+        background: #b91c1c;
+    }
+
+    .qr-section {
+        margin: 1rem -1rem -1rem -1rem;
+        border-radius: 0 0 10px 10px;
+        padding: 1.5rem;
+    }
+
+    .qr-actions {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .qr-actions button {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1rem;
+        font-weight: 500;
     }
 }
 
+/* Улучшенные стили для бургер-меню */
 .burger-menu {
     display: none;
     flex-direction: column;
     justify-content: space-between;
-    width: 30px;
-    height: 24px;
+    width: 36px;
+    height: 28px;
     background: transparent;
     border: none;
     cursor: pointer;
     padding: 0;
     position: fixed;
-    right: 20px;
-    top: 20px;
+    right: 16px;
+    top: 16px;
     z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.burger-menu-wrapper {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 60px;
+    background: rgba(34, 34, 34, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 999;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .burger-menu span {
     width: 100%;
-    height: 2px;
+    height: 3px;
     background: #fff;
+    border-radius: 3px;
     transition: all 0.3s ease;
 }
 
 .burger-menu.active span:nth-child(1) {
-    transform: translateY(11px) rotate(45deg);
+    transform: translateY(12px) rotate(45deg);
 }
 
 .burger-menu.active span:nth-child(2) {
@@ -1830,27 +2023,7 @@ button.create:disabled {
 }
 
 .burger-menu.active span:nth-child(3) {
-    transform: translateY(-11px) rotate(-45deg);
-}
-
-.sidebar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background: #222;
-    border-bottom: 1px solid #444;
-}
-
-.sidebar-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 998;
+    transform: translateY(-12px) rotate(-45deg);
 }
 
 @media (max-width: 768px) {
@@ -1858,41 +2031,57 @@ button.create:disabled {
         display: flex;
     }
 
-    .event-sidebar {
-        position: fixed;
-        right: -100%;
-        top: 0;
-        bottom: 0;
-        width: 80%;
-        max-width: 300px;
-        z-index: 999;
-        transition: right 0.3s ease;
-        border-radius: 0;
-    }
-
-    .event-sidebar.mobile-open {
-        right: 0;
-    }
-
-    .sidebar-overlay {
+    .burger-menu-wrapper {
         display: block;
     }
 
-    .event-sidebar h4 {
-        position: static;
-        padding: 0;
-        margin: 0;
+    .event-create-page {
+        padding-top: 76px;
+        /* Добавляем отступ для шапки */
     }
 
-    .event-sidebar-scroll {
-        height: calc(100vh - 120px);
+    .event-form {
+        margin-top: 0;
     }
 }
 
-@media (max-width: 480px) {
-    .event-sidebar {
-        width: 100%;
-        max-width: none;
+/* Обновляем стили для сайдбара */
+.event-sidebar {
+    top: 60px;
+    /* Учитываем высоту шапки */
+}
+
+.sidebar-overlay {
+    top: 60px;
+    /* Учитываем высоту шапки */
+}
+
+/* Добавляем стили для активного состояния бургер-меню */
+.burger-menu:active {
+    transform: scale(0.95);
+}
+
+.burger-menu:focus {
+    outline: none;
+}
+
+.burger-menu:focus-visible {
+    outline: 2px solid #9333ea;
+    outline-offset: 2px;
+}
+
+/* Добавляем анимацию для шапки */
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
     }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+.burger-menu-wrapper {
+    animation: slideDown 0.3s ease-out;
 }
 </style>
