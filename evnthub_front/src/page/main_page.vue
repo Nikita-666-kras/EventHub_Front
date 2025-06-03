@@ -40,7 +40,7 @@
     <!-- Карусель с ивентами -->
     <section class="carousel-section">
       <h2 class="carousel-title">Ближайшие мероприятия</h2>
-      <Splide :options="splideOptions" class="event-carousel">
+      <Splide :options="splideOptions" class="event-carousel" ref="splideRef">
         <SplideSlide v-for="event in events" :key="event.id">
           <div class="carousel-card" @click="goToEvent(event.id)">
             <img :src="event.image" alt="event image" class="carousel-img" loading="lazy" />
@@ -127,18 +127,19 @@
 
 <script setup>
 import { Splide, SplideSlide } from '@splidejs/vue-splide'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import api from '@/utils/axios'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const events = ref([])
+const splideRef = ref(null)
 
 const splideOptions = {
   type: 'loop',
   perPage: 3,
   gap: '2rem',
-  autoplay: true,
+  autoplay: false,
   pauseOnHover: true,
   arrows: true,
   pagination: false,
@@ -162,6 +163,12 @@ onMounted(async () => {
     const res = await api.get('/events/page?limit=5&sortBy=start_date_and_time')
     events.value = res.data || []
     console.log('Ответ от /events/page:', res.data)
+
+    if (splideRef.value && events.value.length > 1) {
+      nextTick(() => {
+        splideRef.value.go('+1');
+      });
+    }
 
   } catch (e) {
     console.error('Ошибка загрузки мероприятий:', e)
@@ -474,9 +481,8 @@ body {
   margin: 5% 0;
   display: flex;
   align-items: center;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 1;
+  transform: none;
 }
 
 .first_desciption:nth-child(1) {
@@ -644,9 +650,9 @@ footer:hover .line {
   background: none;
   box-shadow: none;
   border-radius: 0;
-  margin: 0 -8vw 3rem -8vw;
+  margin: 0 auto 3rem auto;
   max-width: none;
-  padding: 0;
+  padding: 0 1rem;
   position: relative;
   overflow: visible;
 }
@@ -660,12 +666,9 @@ footer:hover .line {
 }
 
 .event-carousel {
-  width: 100vw;
-  position: relative;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
+  width: 100%;
+  position: static;
+  margin: 0 auto;
   padding: 2rem 0 3rem 0;
 }
 
@@ -682,6 +685,7 @@ footer:hover .line {
   min-height: 350px;
   margin: 0 1.5vw;
   z-index: 2;
+  animation: slideUp 0.5s ease-out forwards;
 }
 
 .carousel-card:hover {
@@ -756,12 +760,19 @@ footer:hover .line {
 
   .description-Block {
     padding: 0 5%;
-    margin-bottom: 10vw;
+    margin-bottom: 3rem;
+    margin-top: 2rem;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .first_desciption {
     flex-direction: column;
     text-align: center;
+    margin: 2rem 0;
+    opacity: 1;
+    transform: none;
+    animation: none;
   }
 
   .banner-description-image {
@@ -772,7 +783,9 @@ footer:hover .line {
 
   .footer_div {
     flex-direction: column;
-    width: 90vw;
+    width: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
     gap: 2rem;
   }
 
@@ -812,7 +825,7 @@ footer:hover .line {
 
   .carousel-section {
     margin: 0;
-    padding: 0;
+    padding: 0 1rem;
   }
 
   .carousel-title {
@@ -824,6 +837,11 @@ footer:hover .line {
     width: 100%;
     margin: 0;
     padding: 0;
+    position: static;
+    left: auto;
+    right: auto;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .carousel-card {
@@ -912,6 +930,23 @@ footer:hover .line {
   .footer-contacts {
     width: 20vw;
   }
+
+  .carousel-section {
+    margin: 0 auto 3rem auto;
+    padding: 0;
+  }
+
+  .event-carousel {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2rem 0 3rem 0;
+  }
+
+  .carousel-card {
+    margin: 0 1.5vw;
+  }
 }
 
 /* Поддержка prefers-reduced-motion */
@@ -927,7 +962,6 @@ footer:hover .line {
   .banner-image,
   .events,
   .events-header h2,
-  .first_desciption,
   footer,
   .carousel-card {
     animation: none;
@@ -940,6 +974,31 @@ footer:hover .line {
   .network img:hover,
   .li-footer:hover {
     transform: none;
+  }
+}
+
+/* Анимации для пользователей без prefers-reduced-motion */
+@media (prefers-reduced-motion: no-preference) {
+  .first_desciption {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+
+  .first_desciption:nth-child(1) {
+    animation-delay: 0.2s;
+  }
+
+  .first_desciption:nth-child(2) {
+    animation-delay: 0.4s;
+  }
+
+  .first_desciption:nth-child(3) {
+    animation-delay: 0.6s;
+  }
+
+  .navbar {
+    animation: slideDown 0.5s ease-out;
   }
 }
 </style>
