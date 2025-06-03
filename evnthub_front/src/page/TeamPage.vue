@@ -332,7 +332,7 @@ onMounted(async () => {
     display: flex;
     width: 100%;
     max-width: 1400px;
-    gap: 2rem;
+    
 }
 
 .team-form {

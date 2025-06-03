@@ -1326,7 +1326,7 @@ onMounted(async () => {
 @media (min-width: 1025px) {
   .content {
     justify-content: center;
-    gap: 2rem;
+    
   }
 
   .profile-card {
