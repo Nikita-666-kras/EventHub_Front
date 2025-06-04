@@ -42,7 +42,7 @@
                   <div class="stat-fill" :style="{ width: `${(value.count / answers.length) * 100}%` }"></div>
                 </div>
                 <span class="stat-count">{{ value.count }} ({{ Math.round((value.count / answers.length) * 100)
-                  }}%)</span>
+                }}%)</span>
               </div>
             </div>
           </div>
@@ -307,6 +307,10 @@ onMounted(async () => {
   min-height: 100vh;
   color: white;
   padding: 2rem 0;
+}
+
+.burger-menu-wrapper {
+  display: none;
 }
 
 .statistics-page {
@@ -888,6 +892,19 @@ onMounted(async () => {
     border-radius: 0;
   }
 
+  .burger-menu-wrapper {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 60px;
+    background: rgba(34, 34, 34, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 999;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+
   .burger-menu {
     display: flex;
     flex-direction: column;
@@ -903,19 +920,6 @@ onMounted(async () => {
     top: 16px;
     z-index: 1000;
     transition: all 0.3s ease;
-  }
-
-  .burger-menu-wrapper {
-    display: block;
-    position: fixed;
-    top: 0;
-    right: 0;
-    left: 0;
-    height: 60px;
-    background: rgba(34, 34, 34, 0.95);
-    backdrop-filter: blur(8px);
-    z-index: 999;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   }
 
   .burger-menu span {

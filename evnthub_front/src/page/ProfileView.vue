@@ -13,8 +13,8 @@
       {{ toast.message }}
     </div>
 
-    <div v-if="isLoading" class="loading-state">
-      Загрузка данных...
+    <div v-if="isLoading" class="loader-container">
+      <div class="loader"></div>
     </div>
 
     <div v-else-if="error" class="error-state">

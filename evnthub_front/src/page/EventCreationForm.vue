@@ -17,7 +17,7 @@
                             <label for="imageInput">
                                 <div class="image-preview"
                                     :style="{ backgroundImage: imagePreview ? `url(${imagePreview})` : '' }"
-                                    title="Нажмите, чтобы загрузить изображение мероприятия (до 5MB, JPG, PNG, GIF, WebP)">
+                                    title="Нажмите, чтобы загрузить изображение мероприятия (рекомендуемый размер: 1200x675px, до 5MB, форматы: JPG, PNG, GIF, WebP)">
                                     <span v-if="!imagePreview">+</span>
                                 </div>
                             </label>
@@ -26,49 +26,48 @@
 
                         <div class="heade-title">
                             <input class="event-title" v-model="event.title" placeholder="Название Мероприятия"
-                                title="Введите краткое и понятное название мероприятия" />
+                                title="Введите краткое и понятное название вашего мероприятия" />
                             <textarea class="event-description" v-model="event.description" placeholder="Описание"
-                                title="Подробное описание мероприятия: что, где, когда, зачем" />
+                                title="Подробно опишите ваше мероприятие: его цель, программу, для кого оно, что получат участники и другую важную информацию." />
                         </div>
                     </div>
 
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Дата <span class="info-icon"
-                                    title="Выберите дату проведения мероприятия. Не может быть в прошлом.">?</span></label>
+                            <label>Дата </label>
                             <div class="time-item">
                                 <span class="time-label">дата начала мероприятия</span>
                                 <input type="date" v-model="event.date" :min="minDate" :max="maxDate"
-                                    @input="validateDate" />
+                                    @input="validateDate" title="Выберите дату, когда начнется ваше мероприятие." />
                                 <p v-if="dateError" class="error-text">{{ dateError }}</p>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Время <span class="info-icon"
-                                    title="Укажите время начала и окончания мероприятия.">?</span></label>
+                            <label>Время </label>
                             <div class="time-fields">
                                 <div class="time-item">
                                     <span class="time-label">Начало</span>
-                                    <input type="time" v-model="event.time" />
+                                    <input type="time" v-model="event.time" title="Укажите время начала мероприятия." />
                                 </div>
                                 <div class="time-item">
                                     <span class="time-label">Конец</span>
-                                    <input type="time" v-model="event.endTime" />
+                                    <input type="time" v-model="event.endTime"
+                                        title="Укажите время окончания мероприятия. Время окончания должно быть позже времени начала." />
                                 </div>
                             </div>
                             <p v-if="timeError" class="error-text">Время окончания должно быть позже начала</p>
                         </div>
                         <div class="form-group">
-                            <label>Макс кол-во участников <span class="info-icon"
-                                    title="Укажите максимальное количество человек, которое может принять участие.">?</span></label>
+                            <label>Макс кол-во участников </label>
                             <input type="number" v-model="event.maxParticipants"
-                                title="Введите число, 0 - без ограничений" />
+                                title="Введите число участников. Минимум: 3. По умолчанию: 15. 0 или пустое поле - без ограничений."
+                                placeholder="15" min="3" max="1000" />
                         </div>
                         <div class="form-group location-wrapper">
-                            <label>Место <span class="info-icon"
-                                    title="Введите адрес или место проведения мероприятия. Для онлайн-мероприятий можно указать платформу.">?</span></label>
+                            <label>Место </label>
                             <input type="text" v-model="event.location" @input="handleAddressInput"
-                                placeholder="Адрес..." title="Начните вводить адрес для подсказок" />
+                                placeholder="Адрес или онлайн-платформа..."
+                                title="Начните вводить адрес для получения подсказок или укажите ссылку на онлайн-мероприятие." />
                             <ul v-if="suggestions.length" class="suggestions-list">
                                 <li v-for="(s, i) in suggestions" :key="i" @click="selectSuggestion(s)">
                                     {{ s.value }}
@@ -78,19 +77,20 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Формат мероприятия <span class="info-icon"
-                                title="Выберите, будет мероприятие проходить оффлайн или онлайн.">?</span></label>
+                        <label>Формат мероприятия </label>
                         <div class="format-icons">
                             <div class="ww">
                                 <div class="format-option" :class="{ active: event.format === 'offline' }"
-                                    @click="event.format = 'offline'">
+                                    @click="event.format = 'offline'"
+                                    title="Мероприятие пройдет с физическим присутствием участников.">
                                     <img src="@/assets/icons/offline.png" alt="Offline" />
                                 </div>
                                 <p>Оффлайн</p>
                             </div>
                             <div class="ww">
                                 <div class="format-option" :class="{ active: event.format === 'online' }"
-                                    @click="event.format = 'online'">
+                                    @click="event.format = 'online'"
+                                    title="Мероприятие пройдет онлайн (например, вебинар, стрим, видеоконференция).">
                                     <img src="@/assets/icons/online.png" alt="Online" />
                                 </div>
                                 <p>Онлайн</p>
@@ -100,23 +100,27 @@
                             <h3>QR-код мероприятия</h3>
                             <qrcode-vue :value="`https://event-hub.space/event/${selectedEventId}`" :size="160"
                                 :background="'#150A1E'" :foreground="'#BDAEFF'" :level="'H'" :margin="2"
-                                :image-settings='imageSettings' ref="qrRef" class="custom-qr" />
+                                :image-settings='imageSettings' ref="qrRef" class="custom-qr"
+                                title="QR-код для быстрого доступа к странице мероприятия." />
                             <div class="qr-actions">
-                                <button @click="downloadQR">Скачать QR</button>
-                                <button @click="copyLink">Скопировать ссылку</button>
+                                <button @click="downloadQR"
+                                    title="Скачать QR-код мероприятия как изображение (PNG).">Скачать QR</button>
+                                <button @click="copyLink"
+                                    title="Скопировать ссылку на страницу мероприятия в буфер обмена.">Скопировать
+                                    ссылку</button>
                             </div>
                         </div>
                     </div>
 
                     <div class="group-section">
-                        <label>Объединение в группу <span class="info-icon"
-                                title="Определите, будут ли участники регистрироваться индивидуально, в группах, или возможны оба варианта.">?</span></label>
+                        <label>Объединение в группу </label>
                         <div class="group_or_solo">
                             <div>
-                                <select v-model="event.grouping">
-                                    <option>Группы и соло</option>
-                                    <option>Только соло</option>
-                                    <option>Только группы</option>
+                                <select v-model="event.grouping"
+                                    title="Выберите, как участники будут регистрироваться: индивидуально, командами или и так, и так.">
+                                    <option value="both">Команды и индивидуально</option>
+                                    <option value="solo">Только индивидуально</option>
+                                    <option value="group">Только команды</option>
                                 </select>
                             </div>
 
@@ -124,26 +128,38 @@
                                 <template v-if="visibleFieldModes.includes('participant')">
                                     <input type="radio" id="participant-fields" value="participant"
                                         v-model="fieldMode" />
-                                    <label for="participant-fields"><img src="@/assets/icons/user.png" /></label>
+                                    <label for="participant-fields"
+                                        title="Переключиться на настройку полей для индивидуальных участников."><img
+                                            src="@/assets/icons/user.png" /></label>
                                 </template>
                                 <template v-if="visibleFieldModes.includes('group')">
                                     <input type="radio" id="group-fields" value="group" v-model="fieldMode" />
-                                    <label for="group-fields"><img src="@/assets/icons/stats.png" /></label>
+                                    <label for="group-fields"
+                                        title="Переключиться на настройку полей для команд (групп)."><img
+                                            src="@/assets/icons/stats.png" /></label>
                                 </template>
                             </div>
                         </div>
                     </div>
 
-                    <div class="dynamic-fields">
+                    <button v-if="!showCustomFields" @click="showCustomFields = true" class="add-custom-fields-btn"
+                        title="Нажмите, чтобы добавить дополнительные поля, которые участникам нужно будет заполнить при регистрации.">
+                        Создать кастомные поля
+                    </button>
+
+                    <div class="dynamic-fields" v-if="showCustomFields">
                         <h3>Собираемые Данные — {{ fieldMode === 'group' ? 'Группа' : 'Участник' }}</h3>
-                        <p class="section-description">Добавьте поля для сбора дополнительной информации об участниках
+                        <p class="section-description"
+                            title="Здесь вы можете определить, какую дополнительную информацию нужно собрать с участников или команд.">
+                            Добавьте поля для сбора дополнительной информации об участниках
                             или группах.</p>
 
                         <div class="field-templates">
                             <h4>Шаблоны полей</h4>
                             <div class="template-buttons">
                                 <button v-for="(template, index) in fieldTemplates[fieldMode]" :key="index"
-                                    @click="addFieldFromTemplate(template)" class="template-btn">
+                                    @click="addFieldFromTemplate(template)" class="template-btn"
+                                    :title="`Добавить поле: ${template.label} (${template.type})`">
                                     {{ template.label }}
                                 </button>
                             </div>
@@ -151,40 +167,74 @@
 
                         <div class="field-item" v-for="(field, index) in event.fields[fieldMode]" :key="index">
                             <div class="field-header">
-                                <input v-model="field.label" placeholder="Название поля" />
-                                <select v-model="field.type">
-                                    <option value="text">Текст</option>
-                                    <option value="number">Число</option>
-                                    <option value="date">Дата</option>
-                                    <option value="boolean">Да/Нет</option>
-                                    <option value="select">Выбор</option>
-                                </select>
-                                <button @click="removeField(index)" class="remove-btn">×</button>
+                                <div class="field-input-group">
+                                    <label>Название поля</label>
+                                    <input v-model="field.label" placeholder="Название поля"
+                                        title="Введите название для этого поля (например, 'Ваш город')." />
+                                </div>
+                                <div class="field-input-group">
+                                    <label>Тип</label>
+                                    <select v-model="field.type"
+                                        title="Выберите тип данных, который будет собираться этим полем.">
+                                        <option value="text">Текст</option>
+                                        <option value="number">Число</option>
+                                        <option value="date">Дата</option>
+                                        <option value="boolean">Да/Нет</option>
+                                        <option value="select">Выбор</option>
+                                    </select>
+                                </div>
+                                <button @click="removeField(index)" class="remove-btn"
+                                    title="Удалить это кастомное поле.">×</button>
                             </div>
 
                             <div class="field-body">
-                                <input v-if="field.type === 'select'" v-model="field.options"
-                                    placeholder="Варианты через запятую" />
-                                <input v-if="field.type === 'text'" disabled placeholder="Текст..." />
-                                <input v-if="field.type === 'number'" disabled type="number" placeholder="123" />
-                                <input v-if="field.type === 'date'" disabled type="date" />
-                                <select v-if="field.type === 'boolean'" disabled>
+                                <div v-if="field.type === 'select'" class="select-options-manager"
+                                    title="Управление вариантами для выбора.">
+                                    <label class="options-label">Варианты выбора:</label>
+                                    <ul class="options-list">
+                                        <li v-for="(option, optIndex) in field.options" :key="optIndex"
+                                            :title="`Вариант: ${option}`">
+                                            {{ option }}
+                                            <button @click="removeOption(index, optIndex)" class="remove-option-btn"
+                                                title="Удалить этот вариант.">×</button>
+                                        </li>
+                                    </ul>
+                                    <div class="add-option-input">
+                                        <input v-model="field.newOption" placeholder="Добавить вариант"
+                                            @keyup.enter="addOption(index)" title="Введите новый вариант выбора." />
+                                        <button @click="addOption(index)"
+                                            title="Добавить введенный вариант в список.">Добавить</button>
+                                    </div>
+                                </div>
+                                <input v-if="field.type === 'text'" disabled placeholder="Текст..."
+                                    title="Поле для ввода текстовой информации." />
+                                <input v-if="field.type === 'number'" disabled type="number" placeholder="123"
+                                    title="Поле для ввода числовой информации." />
+                                <input v-if="field.type === 'date'" disabled type="date"
+                                    title="Поле для выбора даты." />
+                                <select v-if="field.type === 'boolean'" disabled
+                                    title="Поле для выбора ответа Да или Нет.">
                                     <option>Да</option>
                                     <option>Нет</option>
                                 </select>
                             </div>
 
                             <div class="field-footer">
-                                <input v-model="field.description" placeholder="Описание поля" />
-                                <input v-model="field.hint" placeholder="Подсказка для заполнения" class="hint-input" />
+                                <input v-model="field.description" placeholder="Описание поля"
+                                    title="Краткое описание поля для участника (необязательно)." />
+                                <input v-model="field.hint" placeholder="Подсказка для заполнения" class="hint-input"
+                                    title="Небольшая подсказка или пример для участника при заполнении (необязательно)." />
                             </div>
                         </div>
 
-                        <button class="add-field" @click="addField">Добавить поле</button>
+                        <button class="add-field" @click="addField"
+                            title="Добавить новое кастомное поле для сбора данных.">Добавить
+                            поле</button>
                     </div>
 
                     <div class="create_event">
-                        <button class="create" @click="submitEvent" :disabled="timeError">
+                        <button class="create" @click="submitEvent" :disabled="timeError"
+                            title="Сохранить все изменения и создать/обновить мероприятие.">
                             {{ selectedEventId ? 'Обновить' : 'Создать' }}
                         </button>
                     </div>
@@ -196,15 +246,19 @@
                     </div>
                     <div class="event-sidebar-scroll">
                         <div class="upcoming-event" v-for="ev in upcomingEvents" :key="ev.id" @click="selectEvent(ev)"
-                            :class="{ active: selectedEventId === ev.id }">
+                            :class="{ active: selectedEventId === ev.id }"
+                            :title="`Кликните, чтобы загрузить данные мероприятия '${ev.eventName}' для редактирования.`">
                             <p>{{ ev.eventName }}</p>
                             <p>Дата: {{ formatDate(ev.startDateAndTime) }}</p>
-                            <button v-if="selectedEventId === ev.id" class="delete-btn" @click.stop="confirmDelete(ev)">
+                            <button v-if="selectedEventId === ev.id" class="delete-btn" @click.stop="confirmDelete(ev)"
+                                title="Удалить это мероприятие без возможности восстановления.">
                                 Удалить
                             </button>
                         </div>
                     </div>
-                    <button class="submit-btn" @click="resetForm">Новое мероприятие</button>
+                    <button class="submit-btn" @click="resetForm"
+                        title="Очистить форму и начать создание нового мероприятия.">Новое
+                        мероприятие</button>
                 </div>
 
                 <div class="sidebar-overlay" v-if="isSidebarOpen" @click="toggleSidebar"></div>
@@ -229,6 +283,7 @@ const suggestions = ref([])
 const fieldMode = ref('participant')
 
 const upcomingEvents = ref([])
+const showCustomFields = ref(false)
 
 const imageSettings = ref({
     src: new URL('@/assets/logo.svg', import.meta.url).href,
@@ -243,9 +298,9 @@ const event = ref({
     date: '',
     time: '',
     endTime: '',
-    maxParticipants: '',
+    maxParticipants: 15, // Устанавливаем значение по умолчанию 15
     location: '',
-    grouping: 'Группы и соло',
+    grouping: 'both',
     format: 'offline',
     fields: {
         participant: [],
@@ -396,11 +451,35 @@ const selectSuggestion = suggestion => {
 }
 
 const addField = () => {
-    event.value.fields[fieldMode.value].push({ label: '', type: 'text', options: '', description: '' })
+    event.value.fields[fieldMode.value].push({
+        label: '',
+        type: 'text',
+        options: [], // Инициализируем как пустой массив
+        description: '',
+        hint: '',
+        newOption: '' // Добавляем временное поле
+    })
 }
 
 const removeField = index => {
     event.value.fields[fieldMode.value].splice(index, 1)
+}
+
+// Новые функции для добавления и удаления вариантов выбора
+const addOption = (fieldIndex) => {
+    const field = event.value.fields[fieldMode.value][fieldIndex]
+    if (field.newOption && field.newOption.trim() !== '') {
+        // Убеждаемся, что field.options - массив
+        if (!Array.isArray(field.options)) {
+            field.options = []
+        }
+        field.options.push(field.newOption.trim())
+        field.newOption = '' // Очищаем поле ввода
+    }
+}
+
+const removeOption = (fieldIndex, optionIndex) => {
+    event.value.fields[fieldMode.value][fieldIndex].options.splice(optionIndex, 1)
 }
 
 const timeError = computed(() => {
@@ -686,9 +765,9 @@ const resetForm = () => {
         date: '',
         time: '',
         endTime: '',
-        maxParticipants: '',
+        maxParticipants: 15, // Устанавливаем значение по умолчанию 15
         location: '',
-        grouping: 'Группы и соло',
+        grouping: 'both',
         format: 'offline',
         fields: {
             participant: [],
@@ -696,6 +775,7 @@ const resetForm = () => {
         }
     }
     fieldMode.value = 'participant'
+    showCustomFields.value = false
     hasUnsavedChanges.value = false
     localStorage.removeItem('eventDraft')
 }
@@ -790,7 +870,9 @@ const submitEvent = async () => {
                         fields: event.value.fields.participant.map(f => ({
                             name: f.label,
                             type: f.type,
-                            require: true
+                            require: true,
+                            // Преобразуем массив options в строку через запятую для отправки
+                            options: Array.isArray(f.options) ? f.options.join(',') : ''
                         }))
                     }
                     console.log('Отправка полей участников:', participantFieldsPayload)
@@ -809,7 +891,9 @@ const submitEvent = async () => {
                         fields: event.value.fields.group.map(f => ({
                             name: f.label,
                             type: f.type,
-                            require: true
+                            require: true,
+                            // Преобразуем массив options в строку через запятую для отправки
+                            options: Array.isArray(f.options) ? f.options.join(',') : ''
                         }))
                     }
                     console.log('Отправка полей команд:', teamFieldsPayload)
@@ -884,10 +968,19 @@ const selectEvent = async (ev) => {
         }
 
         for (const f of data.fields || []) {
+            const field = {
+                label: f.name,
+                type: f.type,
+                description: f.description || '',
+                hint: f.hint || '',
+                // Преобразуем строку options из API в массив
+                options: f.type === 'select' && f.options ? f.options.split(',').map(opt => opt.trim()) : [],
+                newOption: '' // Добавляем временное поле
+            }
             if (f.forTeam) {
-                fields.group.push(f)
+                fields.group.push(field)
             } else {
-                fields.participant.push(f)
+                fields.participant.push(field)
             }
         }
 
@@ -905,6 +998,15 @@ const selectEvent = async (ev) => {
         }
 
         imagePreview.value = data.image || ''
+
+        // Определяем, нужно ли показать секцию кастомных полей
+        showCustomFields.value = fields.participant.length > 0 || fields.group.length > 0
+
+        // Закрываем сайдбар на мобильных после выбора мероприятия
+        if (window.innerWidth <= 768 && isSidebarOpen.value) {
+            toggleSidebar()
+        }
+
     } catch (err) {
         console.error('Ошибка загрузки события', err)
     }
@@ -1016,7 +1118,7 @@ const fieldTemplates = {
         {
             label: 'Уровень подготовки',
             type: 'select',
-            options: 'Начинающий,Средний,Продвинутый',
+            options: ['Начинающий', 'Средний', 'Продвинутый'],
             description: 'Общий уровень подготовки команды',
             hint: 'Выберите один из вариантов'
         }
@@ -1024,7 +1126,13 @@ const fieldTemplates = {
 }
 
 const addFieldFromTemplate = (template) => {
-    event.value.fields[fieldMode.value].push({ ...template })
+    // Копируем шаблон и убеждаемся, что options - массив и добавляем newOption
+    const newField = JSON.parse(JSON.stringify(template)); // Глубокое копирование
+    if (newField.type === 'select' && !Array.isArray(newField.options)) {
+        newField.options = [];
+    }
+    newField.newOption = ''; // Добавляем временное поле
+    event.value.fields[fieldMode.value].push(newField);
 }
 
 // Добавляем состояние для бургер-меню
@@ -1416,11 +1524,13 @@ select:focus {
 }
 
 .field-item {
-    display: flex;
-    gap: 0.5rem;
+    background: #2a2a2a;
+    padding: 1rem;
+    border-radius: 8px;
     margin-bottom: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
     animation: fadeIn 0.5s ease-out;
     transition: all 0.3s ease;
 }
@@ -1429,14 +1539,54 @@ select:focus {
     transform: translateX(5px);
 }
 
-.field-item input,
-.field-item select {
-    flex: 1;
-    min-width: 180px;
+.field-header {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
-.field-item button {
-    background: #a00;
+.field-input-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 150px;
+}
+
+.field-input-group label {
+    font-size: 0.9rem;
+    color: #ccc;
+    margin-bottom: 0.3rem;
+}
+
+.field-item input,
+.field-item select {
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: none;
+    background: #333;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.field-body {
+    margin-bottom: 0.8rem;
+}
+
+.field-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.hint-input {
+    font-size: 0.9rem;
+    color: #999;
+}
+
+.remove-btn {
+    background: #dc2626;
     color: white;
     border: none;
     border-radius: 50%;
@@ -1445,11 +1595,10 @@ select:focus {
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
-}
-
-.field-item button:hover {
-    transform: scale(1.1);
-    background: #c00;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .add-field,
@@ -1640,12 +1789,18 @@ button.create:disabled {
     padding: 1rem;
     border-radius: 8px;
     margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    animation: fadeIn 0.5s ease-out;
+    transition: all 0.3s ease;
 }
 
 .field-header {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.8rem;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 .field-body {
@@ -1676,11 +1831,111 @@ button.create:disabled {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .remove-btn:hover {
     background: #b91c1c;
     transform: scale(1.1);
+}
+
+.add-custom-fields-btn {
+    background: linear-gradient(to right, #3b82f6, #9333ea);
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+    display: block;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    transition: all 0.3s ease;
+}
+
+.add-custom-fields-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(147, 51, 234, 0.4);
+}
+
+.select-options-manager {
+    background: #3a3a3a;
+    border-radius: 6px;
+    padding: 0.8rem;
+}
+
+.options-label {
+    font-size: 0.9rem;
+    color: #ccc;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.options-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.8rem 0;
+}
+
+.options-list li {
+    background: #444;
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #eee;
+    font-size: 0.95rem;
+}
+
+.remove-option-btn {
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease;
+}
+
+.remove-option-btn:hover {
+    background: #b91c1c;
+}
+
+.add-option-input {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.add-option-input input {
+    flex-grow: 1;
+    padding: 0.4rem;
+    border-radius: 4px;
+    border: none;
+    background: #444;
+    color: white;
+}
+
+.add-option-input button {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.add-option-input button:hover {
+    background: #2563eb;
 }
 
 @media (max-width: 768px) {
@@ -1846,6 +2101,11 @@ button.create:disabled {
         gap: 0.8rem;
     }
 
+    .field-input-group {
+        width: 100%;
+        min-width: unset;
+    }
+
     .field-body {
         flex-direction: column;
         gap: 0.8rem;
@@ -1972,6 +2232,42 @@ button.create:disabled {
         padding: 1rem;
         font-size: 1rem;
         font-weight: 500;
+    }
+
+    .add-custom-fields-btn {
+        width: 100%;
+        text-align: center;
+        padding: 1rem;
+        font-size: 1.1rem;
+    }
+
+    .select-options-manager {
+        padding: 0.6rem;
+    }
+
+    .options-label {
+        font-size: 0.85rem;
+    }
+
+    .options-list li {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .remove-option-btn {
+        width: 18px;
+        height: 18px;
+        font-size: 0.7rem;
+    }
+
+    .add-option-input input {
+        padding: 0.3rem;
+        font-size: 0.9rem;
+    }
+
+    .add-option-input button {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.9rem;
     }
 }
 

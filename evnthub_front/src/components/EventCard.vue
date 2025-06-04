@@ -3,15 +3,35 @@
     <div class="header">
 
       <div class="user-info">
-        <img class="avatar" src="@/assets/icons/user_black.png" />
+        <img class="avatar" :src="user.image || '@/assets/icons/user_black.png'" />
         <p class="nickname">{{ user.name }}</p>
-
       </div>
+
       <div class="title_event">
         <h3>{{ event.eventName }}</h3>
       </div>
 
-      <div class="menu-icon">⋯</div>
+      <!-- Menu Container -->
+      <div class="menu-container">
+        <div class="menu-icon" @click.stop="toggleMenu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div v-if="isMenuOpen" class="dropdown-menu">
+          <button @click.stop="reportEvent" class="menu-item">
+            Пожаловаться
+          </button>
+          <button v-if="user.canEdit" @click.stop="editEvent" class="menu-item">
+            Изменить
+          </button>
+          <button @click.stop="viewUserEvents" class="menu-item">
+            Мероприятия {{ user.name }}
+          </button>
+        </div>
+      </div>
+      <!-- End Menu Container -->
+
     </div>
 
     <div class="body" @click="goToEventDetails">
@@ -54,6 +74,24 @@ const props = defineProps({
 
 const user = ref('')
 const router = useRouter()
+const isMenuOpen = ref(false) // State for menu visibility
+
+// Function to format date and time (restored if needed later)
+// const formatDateTime = (dateTimeStr) => {
+//   if (!dateTimeStr) return ''
+//   const date = new Date(dateTimeStr)
+//   if (isNaN(date.getTime())) return dateTimeStr
+//   const day = date.getDate().toString().padStart(2, '0')
+//   const month = (date.getMonth() + 1).toString().padStart(2, '0')
+//   const year = date.getFullYear()
+//   const hours = date.getHours().toString().padStart(2, '0')
+//   const minutes = date.getMinutes().toString().padStart(2, '0')
+//   const monthNames = [
+//     'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+//     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+//   ]
+//   return `${day} ${monthNames[date.getMonth()]} ${year}, ${hours}:${minutes}`
+// }
 
 onMounted(async () => {
   try {
@@ -64,9 +102,38 @@ onMounted(async () => {
   }
 })
 
+// Menu toggle and actions
+const toggleMenu = (event) => {
+  event.stopPropagation()
+  isMenuOpen.value = !isMenuOpen.value
+}
+
+const reportEvent = () => {
+  // TODO: Реализовать функционал жалобы
+  console.log('Жалоба на мероприятие:', props.event.id)
+  isMenuOpen.value = false
+}
+
+const editEvent = () => {
+  router.push(`/event/edit/${props.event.id}`)
+  isMenuOpen.value = false
+}
+
+const viewUserEvents = () => {
+  router.push(`/user/${props.event.creatorId}/events`)
+  isMenuOpen.value = false
+}
+
 const goToEventDetails = () => {
   router.push(`/event/${props.event.id}`)
 }
+
+// Close menu when clicking outside
+onMounted(() => {
+  document.addEventListener('click', () => {
+    isMenuOpen.value = false
+  })
+})
 
 </script>
 
@@ -80,6 +147,7 @@ const goToEventDetails = () => {
   margin-bottom: 2rem;
   width: 100%;
   box-sizing: border-box;
+  position: relative;
 }
 
 .header {
@@ -88,6 +156,8 @@ const goToEventDetails = () => {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.5rem;
+  position: relative;
+  padding-top: 0;
 }
 
 .title_event {
@@ -96,13 +166,15 @@ const goToEventDetails = () => {
   text-align: center;
   font-size: large;
   order: 2;
+  margin: 0.5rem 0;
 }
 
 .avatar {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   margin-left: 0.5rem;
-  border-radius: 28%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .location {
@@ -131,9 +203,12 @@ const goToEventDetails = () => {
   color: black;
   border: 0.5rem;
   flex: 1;
-  margin-left: 1rem;
   min-width: 0;
   order: 1;
+  max-width: 60%;
+  margin: 0 auto;
+  padding: 0.5rem 0;
+  justify-content: center;
 }
 
 .nickname {
@@ -144,11 +219,29 @@ const goToEventDetails = () => {
   text-overflow: ellipsis;
 }
 
+.menu-container {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+}
+
 .menu-icon {
-  margin-left: auto;
-  font-size: 1.5rem;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   cursor: pointer;
-  order: 3;
+  padding: 4px;
+}
+
+.menu-icon span {
+  display: block;
+  width: 4px;
+  height: 4px;
+  background-color: white;
+  border-radius: 50%;
 }
 
 .body {
@@ -245,6 +338,42 @@ const goToEventDetails = () => {
   animation: fadeIn 0.5s ease-out;
 }
 
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  min-width: 200px;
+  margin-top: 0.5rem;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border: none;
+  background: none;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.menu-item:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.menu-item:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
 @media (max-width: 768px) {
   .event-card {
     border-radius: 16px;
@@ -276,27 +405,40 @@ const goToEventDetails = () => {
   }
 
   .user-info {
-    margin-top: 0.5rem;
-    margin-left: 0.5rem;
+    margin: 0.5rem auto;
+    max-width: 60%;
+    width: 100%;
+    justify-content: center;
   }
 
   .avatar {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
   }
 
-  .info {
-    margin: 0.5rem 0;
+  .nickname {
+    font-size: 0.9rem;
   }
 
-  .date img,
-  .location img {
-    width: 24px;
-    height: 24px;
+  .menu-container {
+    top: 1.5rem;
+    right: 0.1rem;
   }
 
-  .description {
-    font-size: 0.95rem;
+  .menu-icon {
+    width: 20px;
+    height: 20px;
+    padding: 3px;
+  }
+
+  .menu-icon span {
+    width: 3px;
+    height: 3px;
+  }
+
+  .dropdown-menu {
+    right: -10px;
+    top: calc(100% + 5px);
   }
 }
 </style>
