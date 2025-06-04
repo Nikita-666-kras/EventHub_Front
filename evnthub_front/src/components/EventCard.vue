@@ -184,7 +184,7 @@ const goToEventDetails = () => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  width: 100%;
+  width: 60%;
 }
 
 .preview {
@@ -209,21 +209,23 @@ const goToEventDetails = () => {
 }
 
 .right {
-  flex: 1;
+  flex: 0 0 40%;
   background: #eee;
   color: black;
-  width: 100%;
   height: auto;
   max-height: 35rem;
   padding: 1rem;
   border-radius: 12px;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .description {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: #ccc;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #333;
+  margin: 0;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 @keyframes fadeIn {
@@ -256,13 +258,17 @@ const goToEventDetails = () => {
     gap: 0.75rem;
   }
 
-  .preview {
-    aspect-ratio: 16/9;
+  .left {
+    width: 100%;
   }
 
   .right {
-    padding: 0.75rem;
-    max-height: none;
+    width: 100%;
+    flex: none;
+  }
+
+  .preview {
+    aspect-ratio: 16/9;
   }
 
   .title_event {
@@ -287,6 +293,10 @@ const goToEventDetails = () => {
   .location img {
     width: 24px;
     height: 24px;
+  }
+
+  .description {
+    font-size: 0.95rem;
   }
 }
 </style>
