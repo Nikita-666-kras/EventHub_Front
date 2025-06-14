@@ -1,7 +1,6 @@
 <template>
   <div class="event-card">
     <div class="header">
-
       <div class="user-info">
         <img class="avatar" :src="user.image || '@/assets/icons/user_black.png'" />
         <p class="nickname">{{ user.name }}</p>
@@ -11,7 +10,6 @@
         <h3>{{ event.eventName }}</h3>
       </div>
 
-      <!-- Menu Container -->
       <div class="menu-container">
         <div class="menu-icon" @click.stop="toggleMenu">
           <span></span>
@@ -30,12 +28,9 @@
           </button>
         </div>
       </div>
-      <!-- End Menu Container -->
-
     </div>
 
     <div class="body" @click="goToEventDetails">
-
       <div class="left">
         <img class="preview" :src="event.image" />
         <div class="info">
@@ -45,13 +40,11 @@
               <p> Начало: {{ event.startDateAndTime }}</p>
               <p> Конец: {{ event.endDateAndTime }}</p>
             </div>
-
           </div>
           <div class="location">
             <img src="@/assets/login_icons/location.png" alt="">
             <p> {{ event.eventAddress }}</p>
           </div>
-
         </div>
       </div>
       <div class="right">
@@ -74,24 +67,7 @@ const props = defineProps({
 
 const user = ref('')
 const router = useRouter()
-const isMenuOpen = ref(false) // State for menu visibility
-
-// Function to format date and time (restored if needed later)
-// const formatDateTime = (dateTimeStr) => {
-//   if (!dateTimeStr) return ''
-//   const date = new Date(dateTimeStr)
-//   if (isNaN(date.getTime())) return dateTimeStr
-//   const day = date.getDate().toString().padStart(2, '0')
-//   const month = (date.getMonth() + 1).toString().padStart(2, '0')
-//   const year = date.getFullYear()
-//   const hours = date.getHours().toString().padStart(2, '0')
-//   const minutes = date.getMinutes().toString().padStart(2, '0')
-//   const monthNames = [
-//     'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-//     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
-//   ]
-//   return `${day} ${monthNames[date.getMonth()]} ${year}, ${hours}:${minutes}`
-// }
+const isMenuOpen = ref(false)
 
 onMounted(async () => {
   try {
@@ -102,14 +78,12 @@ onMounted(async () => {
   }
 })
 
-// Menu toggle and actions
 const toggleMenu = (event) => {
   event.stopPropagation()
   isMenuOpen.value = !isMenuOpen.value
 }
 
 const reportEvent = () => {
-  // TODO: Реализовать функционал жалобы
   console.log('Жалоба на мероприятие:', props.event.id)
   isMenuOpen.value = false
 }
@@ -128,15 +102,12 @@ const goToEventDetails = () => {
   router.push(`/event/${props.event.id}`)
 }
 
-// Close menu when clicking outside
 onMounted(() => {
   document.addEventListener('click', () => {
     isMenuOpen.value = false
   })
 })
-
 </script>
-
 
 <style scoped>
 .event-card {

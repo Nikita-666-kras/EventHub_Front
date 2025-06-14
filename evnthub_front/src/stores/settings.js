@@ -23,7 +23,6 @@ export const useSettingsStore = defineStore('settings', {
             this.isCompactMode = isCompact
             localStorage.setItem('isCompactMode', isCompact)
 
-            // Если выключаем компактный режим, сбрасываем режим работы
             if (!isCompact) {
                 this.userMode = 'participant'
                 localStorage.setItem('userMode', 'participant')

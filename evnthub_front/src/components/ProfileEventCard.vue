@@ -56,7 +56,6 @@ defineProps({
   font-size: 1.1rem;
 }
 
-/* Добавляем медиа-запросы для мобильных устройств */
 @media (max-width: 768px) {
   .event-card {
     padding: 1rem;
@@ -76,14 +75,12 @@ defineProps({
     font-size: 0.85rem;
   }
 
-  /* Убираем эффект при наведении на мобильных */
   .event-card:hover {
     transform: none;
     box-shadow: none;
   }
 }
 
-/* Добавляем стили для планшетов */
 @media (min-width: 769px) and (max-width: 1024px) {
   .event-card {
     padding: 1.1rem;
@@ -94,7 +91,6 @@ defineProps({
   }
 }
 
-/* Добавляем анимацию появления */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -111,7 +107,6 @@ defineProps({
   animation: fadeIn 0.3s ease-out;
 }
 
-/* Добавляем поддержку prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   .event-card {
     animation: none;

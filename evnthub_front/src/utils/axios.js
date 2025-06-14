@@ -1,9 +1,9 @@
 import axios from 'axios'
 
-// Создание инстанса
+
 const api = axios.create({
   baseURL: 'https://api.event-hub.space/api',
-  withCredentials: true // нужно для отправки HttpOnly cookie с refresh токеном
+  withCredentials: true 
 })
 
 function setAccessToken(token) {
@@ -33,7 +33,7 @@ function addRefreshSubscriber(cb) {
   refreshSubscribers.push(cb)
 }
 
-// Ответный перехватчик
+
 api.interceptors.response.use(
   res => res,
   async err => {
@@ -41,7 +41,7 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !original._retry) {
       original._retry = true
       if (isRefreshing) {
-        // Ждём, пока другой refresh завершится
+        
         return new Promise((resolve, reject) => {
           addRefreshSubscriber(token => {
             if (token) {
@@ -56,13 +56,13 @@ api.interceptors.response.use(
       }
       isRefreshing = true
       try {
-        // Получаем refreshToken из cookie или localStorage
+        
         let refreshToken = document.cookie.split('; ').find(row => row.startsWith('refresh_token='))?.split('=')[1]
         if (!refreshToken) {
           refreshToken = localStorage.getItem('refresh_token')
         }
         if (!refreshToken) throw new Error('No refresh token found')
-        // Запрос на refresh
+        
         const res = await axios.post(
           'https://api.event-hub.space/api/auth/refresh-token',
           { refreshToken },
@@ -70,12 +70,11 @@ api.interceptors.response.use(
         )
         const newToken = res.data?.access_token
         if (!newToken) throw new Error('No access token in refresh response')
-        // Сохраняем новый access token в cookie
+        
         document.cookie = `jwt=${newToken}; path=/`
         setAccessToken(newToken)
         onRefreshed(newToken)
         isRefreshing = false
-        // Повторяем оригинальный запрос
         original.headers['Authorization'] = `Bearer ${newToken}`
         return api(original)
       } catch (e) {

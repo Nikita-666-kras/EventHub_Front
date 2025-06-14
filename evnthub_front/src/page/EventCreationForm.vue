@@ -2,7 +2,6 @@
     <div>
         <NavBar />
         <div class="event-create-page">
-            <!-- Добавляем шапку для бургер-меню -->
             <div class="burger-menu-wrapper">
                 <button class="burger-menu" @click="toggleSidebar" :class="{ active: isSidebarOpen }">
                     <span></span>
@@ -650,7 +649,7 @@ const minDate = computed(() => {
 
 const maxDate = computed(() => {
     const maxDate = new Date()
-    maxDate.setFullYear(maxDate.getFullYear() + 1) // Максимум на год вперед
+    maxDate.setFullYear(maxDate.getFullYear() + 1) 
     return maxDate.toISOString().split('T')[0]
 })
 
@@ -698,7 +697,7 @@ const loadDraft = () => {
     try {
         const { event: draftEvent, imagePreview: draftImage, fieldMode: draftMode, timestamp } = JSON.parse(draft)
 
-        // Проверяем, не устарел ли черновик (старше 24 часов)
+       
         const draftDate = new Date(timestamp)
         const now = new Date()
         if (now - draftDate > 24 * 60 * 60 * 1000) {
@@ -720,18 +719,18 @@ const loadDraft = () => {
     }
 }
 
-// Следим за изменениями в форме
+
 watch([event, imagePreview, fieldMode], () => {
     hasUnsavedChanges.value = true
 }, { deep: true })
 
-// Автосохранение каждые 30 секунд
+
 onMounted(() => {
     loadDraft()
     autosaveInterval.value = setInterval(saveDraft, 30000)
 })
 
-// Очистка при размонтировании
+
 onBeforeUnmount(() => {
     if (autosaveInterval.value) {
         clearInterval(autosaveInterval.value)
@@ -739,7 +738,7 @@ onBeforeUnmount(() => {
     saveDraft()
 })
 
-// Обработчик перед уходом со страницы
+
 window.addEventListener('beforeunload', (e) => {
     if (hasUnsavedChanges.value) {
         e.preventDefault()
@@ -747,7 +746,7 @@ window.addEventListener('beforeunload', (e) => {
     }
 })
 
-// Модифицируем функцию resetForm
+
 const resetForm = () => {
     if (hasUnsavedChanges.value) {
         if (!confirm('У вас есть несохраненные изменения. Вы уверены, что хотите сбросить форму?')) {
@@ -765,7 +764,7 @@ const resetForm = () => {
         date: '',
         time: '',
         endTime: '',
-        maxParticipants: 15, // Устанавливаем значение по умолчанию 15
+        maxParticipants: 15, 
         location: '',
         grouping: 'both',
         format: 'offline',
@@ -780,7 +779,7 @@ const resetForm = () => {
     localStorage.removeItem('eventDraft')
 }
 
-// Модифицируем функцию submitEvent
+
 const submitEvent = async () => {
     try {
         validateDate()
@@ -798,7 +797,7 @@ const submitEvent = async () => {
 
         const now = new Date().toISOString().slice(0, 19)
 
-        // Создаем/обновляем событие
+        
         const payload = {
             eventName: event.value.title,
             creatorId: getUserIdFromToken(),
@@ -838,12 +837,12 @@ const submitEvent = async () => {
             eventId = createRes.data?.id
         }
 
-        // После создания события загружаем изображение, если оно есть
+        
         if (imageFile.value && eventId) {
             try {
                 const imageUrl = await uploadToS3(eventId)
                 if (imageUrl) {
-                    // Обновляем событие с URL изображения
+                    
                     const updatePayload = {
                         ...payload,
                         image: imageUrl
@@ -860,10 +859,10 @@ const submitEvent = async () => {
             }
         }
 
-        // После создания события добавляем поля, если они есть
+        
         if (eventId && (event.value.fields.participant.length > 0 || event.value.fields.group.length > 0)) {
             try {
-                // Добавляем поля для участников
+                
                 if (event.value.fields.participant.length > 0) {
                     const participantFieldsPayload = {
                         event_id: eventId,
@@ -871,7 +870,7 @@ const submitEvent = async () => {
                             name: f.label,
                             type: f.type,
                             require: true,
-                            // Преобразуем массив options в строку через запятую для отправки
+                            
                             options: Array.isArray(f.options) ? f.options.join(',') : ''
                         }))
                     }
@@ -884,7 +883,7 @@ const submitEvent = async () => {
                     console.log('Ответ на создание полей участников:', participantRes.data)
                 }
 
-                // Добавляем поля для групп
+                
                 if (event.value.fields.group.length > 0) {
                     const teamFieldsPayload = {
                         event_id: eventId,
@@ -892,7 +891,7 @@ const submitEvent = async () => {
                             name: f.label,
                             type: f.type,
                             require: true,
-                            // Преобразуем массив options в строку через запятую для отправки
+                            
                             options: Array.isArray(f.options) ? f.options.join(',') : ''
                         }))
                     }
@@ -920,7 +919,7 @@ const submitEvent = async () => {
             }
         }
 
-        // После успешного сохранения
+        
         hasUnsavedChanges.value = false
         localStorage.removeItem('eventDraft')
 
@@ -973,9 +972,9 @@ const selectEvent = async (ev) => {
                 type: f.type,
                 description: f.description || '',
                 hint: f.hint || '',
-                // Преобразуем строку options из API в массив
+                
                 options: f.type === 'select' && f.options ? f.options.split(',').map(opt => opt.trim()) : [],
-                newOption: '' // Добавляем временное поле
+                newOption: '' 
             }
             if (f.forTeam) {
                 fields.group.push(field)
@@ -999,10 +998,10 @@ const selectEvent = async (ev) => {
 
         imagePreview.value = data.image || ''
 
-        // Определяем, нужно ли показать секцию кастомных полей
+        
         showCustomFields.value = fields.participant.length > 0 || fields.group.length > 0
 
-        // Закрываем сайдбар на мобильных после выбора мероприятия
+        
         if (window.innerWidth <= 768 && isSidebarOpen.value) {
             toggleSidebar()
         }
@@ -1126,8 +1125,8 @@ const fieldTemplates = {
 }
 
 const addFieldFromTemplate = (template) => {
-    // Копируем шаблон и убеждаемся, что options - массив и добавляем newOption
-    const newField = JSON.parse(JSON.stringify(template)); // Глубокое копирование
+    
+    const newField = JSON.parse(JSON.stringify(template)); 
     if (newField.type === 'select' && !Array.isArray(newField.options)) {
         newField.options = [];
     }
@@ -1135,17 +1134,17 @@ const addFieldFromTemplate = (template) => {
     event.value.fields[fieldMode.value].push(newField);
 }
 
-// Добавляем состояние для бургер-меню
+
 const isSidebarOpen = ref(false)
 
-// Функция для переключения сайдбара
+
 const toggleSidebar = () => {
     isSidebarOpen.value = !isSidebarOpen.value
-    // Блокируем скролл body когда сайдбар открыт
+    
     document.body.style.overflow = isSidebarOpen.value ? 'hidden' : ''
 }
 
-// Закрываем сайдбар при изменении размера окна
+
 onMounted(() => {
     window.addEventListener('resize', () => {
         if (window.innerWidth > 768 && isSidebarOpen.value) {
@@ -1957,7 +1956,7 @@ button.create:disabled {
         border-radius: 10px;
         margin-bottom: 1rem;
         font-size: 16px;
-        /* Базовый размер шрифта для лучшей читаемости */
+        
     }
 
     .event-sidebar {
@@ -2271,7 +2270,7 @@ button.create:disabled {
     }
 }
 
-/* Улучшенные стили для бургер-меню */
+
 .burger-menu {
     display: none;
     flex-direction: column;
@@ -2333,7 +2332,7 @@ button.create:disabled {
 
     .event-create-page {
         padding-top: 76px;
-        /* Добавляем отступ для шапки */
+        
     }
 
     .event-form {
@@ -2341,18 +2340,17 @@ button.create:disabled {
     }
 }
 
-/* Обновляем стили для сайдбара */
 .event-sidebar {
     top: 60px;
-    /* Учитываем высоту шапки */
+    
 }
 
 .sidebar-overlay {
     top: 60px;
-    /* Учитываем высоту шапки */
+    
 }
 
-/* Добавляем стили для активного состояния бургер-меню */
+/
 .burger-menu:active {
     transform: scale(0.95);
 }
@@ -2366,7 +2364,7 @@ button.create:disabled {
     outline-offset: 2px;
 }
 
-/* Добавляем анимацию для шапки */
+
 @keyframes slideDown {
     from {
         transform: translateY(-100%);

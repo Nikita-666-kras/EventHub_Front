@@ -12,7 +12,6 @@ import 'vue-toastification/dist/index.css'
 const app = createApp(App)
 const pinia = createPinia()
 
-// Ленивая загрузка компонентов
 app.component('EventCard', () => import('./components/EventCard.vue'))
 app.component('NavBar', () => import('./components/nav_bar.vue'))
 app.component('ProfileEventCard', () => import('./components/ProfileEventCard.vue'))

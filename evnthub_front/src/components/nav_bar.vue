@@ -9,7 +9,6 @@
         <router-link to="/lenta"><img src="/src/assets/logo.svg" alt="Logo" class="logo_img" /></router-link>
         <div class="iconss">
           <nav class="nav-icons">
-            <!-- Все кнопки по умолчанию -->
             <template v-if="!settings.isCompactMode">
               <router-link to="/lenta" class="nav-item">
                 <img src="@/assets/icons/waves.png" alt="Waves" />
@@ -33,9 +32,7 @@
               </router-link>
             </template>
 
-            <!-- Компактный режим -->
             <template v-else>
-              <!-- Режим участника -->
               <template v-if="settings.userMode === 'participant'">
                 <router-link to="/lenta" class="nav-item">
                   <img src="@/assets/icons/waves.png" alt="Waves" />
@@ -51,7 +48,6 @@
                 </router-link>
               </template>
 
-              <!-- Режим создателя -->
               <template v-else>
                 <router-link to="/user" class="nav-item">
                   <img src="@/assets/icons/user.png" alt="User" />

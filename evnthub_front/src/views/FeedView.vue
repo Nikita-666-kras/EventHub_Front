@@ -5,7 +5,7 @@ import EventCard from '@/components/EventCard.vue'
 const events = ref([])
 
 onMounted(async () => {
-  // Заглушка, позже можно заменить на API-запрос к БД
+// заглушка пока не настроенно подключение к бд
   events.value = [
     {
       id: 1,
