@@ -2350,7 +2350,6 @@ button.create:disabled {
     
 }
 
-/
 .burger-menu:active {
     transform: scale(0.95);
 }
