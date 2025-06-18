@@ -69,7 +69,7 @@
                     </div>
 
                     <form class="custom-fields-form" @submit.prevent="register"
-                        v-if="!isRegistered && !isCreator && showIndividualRegistration">
+                        v-if="!isRegistered && !isCreator && event && (event.qrCode === 'solo' || event.qrCode === 'both')">
                         <div v-for="field in customFields" :key="field.name" class="custom-field">
                             <label :for="field.name">
                                 {{ field.name }}
@@ -88,14 +88,13 @@
                         </button>
                     </form>
 
-                    <div v-if="!isRegistered && !isCreator && showTeamRegistration" class="team-registration-section">
-                        <div v-if="isTeamOnly" class="team-only-notice">
-                            <h4>Регистрация только командами</h4>
-                            <p>Для участия в этом мероприятии необходимо создать или присоединиться к команде</p>
-                        </div>
-                        <div v-else class="team-option-notice">
-                            <h4>Регистрация командами</h4>
-                            <p>Вы также можете зарегистрироваться командой</p>
+
+
+
+                    <div v-if="canShowTeamRegistrationAfterSolo" class="team-registration-section">
+                        <div class="team-option-notice">
+                            <h4>Хотите создать команду?</h4>
+                            <p>Вы можете создать или присоединиться к команде для этого мероприятия</p>
                         </div>
                         <div class="team-buttons">
                             <button class="team-btn create-team"
@@ -116,7 +115,7 @@
                         <div class="custom-fields-form creator-form">
                             <div v-for="field in customFields" :key="field.name" class="custom-field">
                                 <label :for="field.name">
-                                    {{ field.name }}
+                                    {{ field.label || field.name }}
                                     <span v-if="field.required">*</span>
                                     <span class="field-hint" v-if="field.hint">{{ field.hint }}</span>
                                 </label>
@@ -176,316 +175,217 @@ import NavBar from '@/components/nav_bar.vue'
 import { useToast } from 'vue-toastification'
 
 const route = useRoute()
+const toast = useToast()
+
 const event = ref({})
 const creator = ref({})
 const customFields = ref([])
 const customFieldValues = ref({})
-const loading = ref(true)
 const fieldErrors = ref({})
+const loading = ref(true)
 const isRegistered = ref(false)
 const isCreator = ref(false)
+const isInTeam = ref(false)
 const eventGrouping = ref('both')
-const toast = useToast()
 
 onMounted(async () => {
-    const eventId = route.params.id
-    try {
-        const res = await api.get(`/event/${eventId}`)
-        event.value = res.data
+  const eventId = route.params.id
+  try {
+    const { data: ev } = await api.get(`/event/${eventId}`)
+    event.value = ev
+    eventGrouping.value = ev.qrCode || ev.grouping || 'both'
 
-        // Получаем тип группировки из данных мероприятия
-        eventGrouping.value = res.data.qrCode || res.data.grouping || 'both'
+    const { data: usr } = await api.get(`/users/${ev.creatorId}`)
+    creator.value = usr
 
-        const userRes = await api.get(`/users/${res.data.creatorId}`)
-        creator.value = userRes.data
+    const userId = getUserIdFromToken()
+    isCreator.value = userId === ev.creatorId
 
-        // Проверяем, является ли пользователь создателем мероприятия
-        const userId = getUserIdFromToken()
-        if (userId) {
-            // Проверяем, является ли пользователь создателем
-            isCreator.value = userId === res.data.creatorId
-
-            if (!isCreator.value) {
-                // Проверяем регистрацию только если пользователь не создатель
-                try {
-                    const checkRes = await api.get(`/participants/check/${userId}/${eventId}`)
-                    // Проверяем поле isRegistered в ответе
-                    isRegistered.value = checkRes.data && checkRes.data.isRegistered === true
-                } catch (e) {
-                    // Если ошибка 404 или другая, значит не зарегистрирован
-                    isRegistered.value = false
-                }
-            }
-        } else {
-            isRegistered.value = false
-        }
-
-        // Получаем кастомные поля для участника
-        try {
-            const customRes = await api.get(`/responses/custom-fields/participant/${eventId}`)
-            // Проверяем структуру ответа
-            if (customRes.data && Array.isArray(customRes.data)) {
-                customFields.value = customRes.data
-            } else if (customRes.data && Array.isArray(customRes.data.fields)) {
-                customFields.value = customRes.data.fields
-            } else {
-                customFields.value = []
-            }
-
-            // Инициализируем значения полей
-            customFields.value.forEach(field => {
-                customFieldValues.value[field.name] = ''
-            })
-        } catch (e) {
-            console.error('Ошибка загрузки кастомных полей:', e)
-            customFields.value = []
-            // Не показываем ошибку, если полей просто нет
-            if (e.response?.status !== 404) {
-                toast.error('Ошибка загрузки дополнительных полей')
-            }
-        }
-    } catch (e) {
-        console.error('Ошибка загрузки данных:', e)
-        toast.error('Ошибка загрузки данных события')
-    } finally {
-        loading.value = false
+    if (userId && !isCreator.value) {
+      try {
+        const { data: chk } = await api.get(`/participants/check/${userId}/${eventId}`)
+        isRegistered.value = chk.isRegistered === true
+      } catch {
+        isRegistered.value = false
+      }
     }
+
+    try {
+      const { data: res } = await api.get(`/responses/custom-fields/participant/${eventId}`)
+      customFields.value = Array.isArray(res) ? res : res.fields || []
+      customFields.value.forEach(f => customFieldValues.value[f.name] = '')
+    } catch (e) {
+      if (e.response?.status !== 404) toast.error('Ошибка загрузки дополнительных полей')
+    }
+
+    await checkIfInTeam()
+  } catch (e) {
+    console.error(e)
+    toast.error('Ошибка загрузки события')
+  } finally {
+    loading.value = false
+  }
 })
 
 const getEventStatus = () => {
-    const now = new Date()
-    const start = new Date(event.value.startDateAndTime)
-    const end = new Date(event.value.endDateAndTime)
-
-    if (now < start) return 'Предстоящее'
-    if (now > end) return 'Завершенное'
-    return 'Активное'
+  const now = new Date()
+  const start = new Date(event.value.startDateAndTime)
+  const end = new Date(event.value.endDateAndTime)
+  if (now < start) return 'Предстоящее'
+  if (now > end) return 'Завершенное'
+  return 'Активное'
 }
 
 const getEventStatusClass = () => {
-    const status = getEventStatus()
-    return {
-        'upcoming': status === 'Предстоящее',
-        'active': status === 'Активное',
-        'ended': status === 'Завершенное'
-    }
+  const s = getEventStatus()
+  return {
+    upcoming: s === 'Предстоящее',
+    active: s === 'Активное',
+    ended: s === 'Завершенное'
+  }
 }
 
-const getRelativeTime = (date) => {
-    const now = new Date()
-    const eventDate = new Date(date)
-    const diff = eventDate - now
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-
-    if (days > 0) return `через ${days} ${days === 1 ? 'день' : 'дня'}`
-    if (days < 0) return `${Math.abs(days)} ${Math.abs(days) === 1 ? 'день' : 'дня'} назад`
-    return 'сегодня'
+const getRelativeTime = dateStr => {
+  const now = new Date()
+  const date = new Date(dateStr)
+  const diff = date - now
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  if (days > 0) return `через ${days} ${days === 1 ? 'день' : 'дня'}`
+  if (days < 0) return `${Math.abs(days)} ${Math.abs(days) === 1 ? 'день' : 'дня'} назад`
+  return 'сегодня'
 }
 
-const validateField = (field) => {
-    const value = customFieldValues.value[field.name]
-
-    if (field.required && (!value || value.trim() === '')) {
-        fieldErrors.value[field.name] = 'Это поле обязательно'
-        return false
-    } else if (field.type === 'number' && value && isNaN(Number(value))) {
-        fieldErrors.value[field.name] = 'Введите число'
-        return false
-    } else {
-        fieldErrors.value[field.name] = ''
-        return true
-    }
+const validateField = field => {
+  const val = customFieldValues.value[field.name]
+  if (field.required && (!val || val.toString().trim() === '')) {
+    fieldErrors.value[field.name] = 'Это поле обязательно'
+    return false
+  }
+  if (field.type === 'number' && val !== '' && isNaN(Number(val))) {
+    fieldErrors.value[field.name] = 'Введите число'
+    return false
+  }
+  fieldErrors.value[field.name] = ''
+  return true
 }
 
 const isFormValid = computed(() => {
-    // Проверяем все обязательные поля
-    const requiredFields = customFields.value.filter(field => field.required)
-    const hasErrors = Object.values(fieldErrors.value).some(error => error)
-
-    // Проверяем, что все обязательные поля заполнены
-    const allRequiredFilled = requiredFields.every(field => {
-        const value = customFieldValues.value[field.name]
-        return value && value.trim() !== ''
-    })
-
-    return !hasErrors && allRequiredFilled
+  return customFields.value.filter(f => f.required).every(f => validateField(f))
 })
 
-// Добавляем computed свойства для командной регистрации
-const showTeamRegistration = computed(() => {
-    return eventGrouping.value === 'group' || eventGrouping.value === 'both'
-})
-
-const showIndividualRegistration = computed(() => {
-    return eventGrouping.value === 'solo' || eventGrouping.value === 'both'
-})
-
-const isTeamOnly = computed(() => {
-    return eventGrouping.value === 'group'
-})
+const checkIfInTeam = async () => {
+  const userId = getUserIdFromToken()
+  const eventId = route.params.id
+  if (!userId || !eventId) {
+    isInTeam.value = false
+    return
+  }
+  try {
+    const { data } = await api.get(`/teams/user-team/${userId}/${eventId}`)
+    isInTeam.value = !!data && !!data.id
+  } catch {
+    isInTeam.value = false
+  }
+}
 
 const shareEvent = (platform) => {
-    const eventUrl = `https://event-hub.space/event/${route.params.id}`
-    const title = event.value.eventName
-
-    switch (platform) {
-        case 'vk':
-            window.open(`https://vk.com/share.php?url=${encodeURIComponent(eventUrl)}&title=${encodeURIComponent(title)}`)
-            break
-        case 'telegram':
-            window.open(`https://t.me/share/url?url=${encodeURIComponent(eventUrl)}&text=${encodeURIComponent(title)}`)
-            break
-    }
+  const url = encodeURIComponent(`https://event-hub.space/event/${route.params.id}`)
+  const title = encodeURIComponent(event.value.eventName)
+  const link = platform === 'vk'
+    ? `https://vk.com/share.php?url=${url}&title=${title}`
+    : `https://t.me/share/url?url=${url}&text=${title}`
+  window.open(link, '_blank')
 }
 
-const formatDate = (iso) => {
-    const date = new Date(iso)
-    return date.toLocaleString()
-}
+const formatDate = iso => new Date(iso).toLocaleString()
 
 const getUserIdFromToken = () => {
-    const token = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('jwt='))?.split('=')[1]
-    if (!token) {
-        return null
-    }
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        const userId = payload.sub || payload.userId
-        return userId
-    } catch (e) {
-        console.error('JWT decode error', e)
-        return null
-    }
+  try {
+    const token = document.cookie.split('; ').find(r => r.startsWith('jwt='))?.split('=')[1]
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.sub || payload.userId
+  } catch {
+    return null
+  }
 }
 
 const register = async () => {
-    const eventId = route.params.id
+  const userId = getUserIdFromToken()
+  const eventId = route.params.id
+  if (!userId) return toast.error('Необходимо войти в систему')
+  if (isCreator.value) return toast.error('Создатель не может регистрироваться')
+
+  let participantId
+  try {
+    const { data } = await api.post('/participants/register', {
+      userId,
+      eventId,
+      teamId: null
+    })
+    participantId = data.id || data.participantId
+  } catch (e) {
+    toast.error(e.response?.status === 409 ? 'Вы уже зарегистрированы' : 'Ошибка регистрации')
+    return
+  }
+
+  if (customFields.value.length) {
+    const responses = {}
+    let allOk = true
+
+    customFields.value.forEach(f => {
+      const val = customFieldValues.value[f.name]
+      if (f.required && (!val || val.toString().trim() === '')) {
+        fieldErrors.value[f.name] = 'Это поле обязательно'
+        allOk = false
+      } else {
+        fieldErrors.value[f.name] = ''
+      }
+      if (val !== undefined && val !== null && val !== '') {
+        responses[f.name] = val.toString()
+      }
+    })
+
+    if (!allOk) return toast.error('Заполните обязательные поля')
+
     try {
-        const userId = getUserIdFromToken()
-        if (!userId) {
-            toast.error('Необходимо войти в систему')
-            return
-        }
-
-        // Проверяем, не является ли пользователь создателем
-        if (isCreator.value) {
-            toast.error('Создатель мероприятия не может регистрироваться на своё мероприятие')
-            return
-        }
-
-        // Валидируем все поля перед отправкой
-        let isValid = true
-        customFields.value.forEach(field => {
-            if (!validateField(field)) {
-                isValid = false
-            }
-        })
-
-        if (!isValid) {
-            toast.error('Пожалуйста, исправьте ошибки в форме')
-            return
-        }
-
-        // 1. Основная регистрация
-        const registrationRes = await api.post('/participants/register', {
-            userId: userId,
-            eventId: eventId,
-            teamId: null
-        })
-
-        // Получаем participant_id из ответа регистрации
-        const participantId = registrationRes.data.id || registrationRes.data.participantId
-
-        // 2. Отправка кастомных полей только если они есть и заполнены
-        if (customFields.value.length > 0 && Object.keys(customFieldValues.value).some(key => customFieldValues.value[key])) {
-            await api.post('/responses/participant/submit', {
-                event_id: eventId,
-                participant_id: participantId,
-                responses: customFieldValues.value
-            })
-        }
-
-        toast.success('Вы успешно зарегистрированы!')
-
-        // Обновляем статус регистрации
-        isRegistered.value = true
-
-        // Обновляем количество участников
-        event.value.currentParticipantQuantity += 1
-
-        // Перенаправляем на страницу статистики или обновляем страницу
-        setTimeout(() => {
-            window.location.reload()
-        }, 1500)
-
+      await api.post('/responses/participant/submit', {
+        event_id: eventId,
+        participant_id: participantId,
+        responses
+      })
     } catch (e) {
-        console.error('Ошибка при регистрации:', e)
-        if (e.response?.status === 409) {
-            toast.error('Вы уже зарегистрированы на это мероприятие')
-        } else if (e.response?.status === 400) {
-            toast.error('Ошибка в данных формы')
-        } else {
-            toast.error('Ошибка при регистрации')
-        }
+      toast.error('Ошибка при отправке кастомных полей')
+      return
     }
+  }
+
+  toast.success('Вы успешно зарегистрированы!')
+  isRegistered.value = true
+  event.value.currentParticipantQuantity += 1
+  await checkIfInTeam()
 }
+
+const canShowTeamRegistrationAfterSolo = computed(() => {
+  return event.value.qrCode === 'both' && isRegistered.value && !isInTeam.value
+})
 
 const cancelRegistration = async () => {
-    const eventId = route.params.id
+  const userId = getUserIdFromToken()
+  const eventId = route.params.id
+  if (!confirm('Отменить участие?')) return
+  if (!userId) return toast.error('Необходимо войти в систему')
 
-    // Добавляем подтверждение
-    if (!confirm('Вы уверены, что хотите отменить участие в мероприятии?')) {
-        return
-    }
-
-    try {
-        const userId = getUserIdFromToken()
-        if (!userId) {
-            toast.error('Необходимо войти в систему')
-            return
-        }
-
-        // Проверяем, не является ли пользователь создателем
-        if (isCreator.value) {
-            toast.error('Создатель мероприятия не может отменить свою регистрацию')
-            return
-        }
-
-        // Получаем информацию о регистрации участника
-        const participantInfo = await api.get(`/participants/${userId}/${eventId}/info`)
-        if (!participantInfo.data || !participantInfo.data.id) {
-            toast.error('Информация о регистрации не найдена')
-            return
-        }
-
-        // Отправляем запрос на отмену регистрации
-        await api.delete(`/participants/${userId}/${eventId}`)
-
-        toast.success('Вы успешно отменили участие в мероприятии')
-
-        // Обновляем статус регистрации
-        isRegistered.value = false
-
-        // Обновляем количество участников
-        event.value.currentParticipantQuantity -= 1
-
-        // Перенаправляем на страницу статистики или обновляем страницу
-        setTimeout(() => {
-            window.location.reload()
-        }, 1500)
-
-    } catch (e) {
-        console.error('Ошибка при отмене регистрации:', e)
-        if (e.response?.status === 404) {
-            toast.error('Регистрация не найдена')
-        } else {
-            toast.error('Ошибка при отмене регистрации')
-        }
-    }
+  try {
+    await api.delete(`/participants/${userId}/${eventId}`)
+    toast.success('Участие отменено')
+    isRegistered.value = false
+    event.value.currentParticipantQuantity -= 1
+  } catch {
+    toast.error('Ошибка при отмене регистрации')
+  }
 }
 </script>
+
 
 <style scoped>
 .event-details-wrapper {

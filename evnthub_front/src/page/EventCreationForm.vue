@@ -248,6 +248,10 @@
                         <h4>Мои мероприятия</h4>
                     </div>
                     <div class="event-sidebar-scroll">
+                        <div v-if="isLoadingEvent" class="loading-indicator">
+                            <div class="spinner"></div>
+                            <p>Загрузка данных...</p>
+                        </div>
                         <div class="upcoming-event" v-for="ev in upcomingEvents" :key="ev.id" @click="selectEvent(ev)"
                             :class="{ active: selectedEventId === ev.id }"
                             :title="`Кликните, чтобы загрузить данные мероприятия '${ev.eventName}' для редактирования.`">
@@ -867,7 +871,36 @@ const submitEvent = async () => {
 
         if (eventId && (event.value.fields.participant.length > 0 || event.value.fields.group.length > 0)) {
             try {
+                // При обновлении мероприятия сначала удаляем старые поля
+                if (selectedEventId.value) {
+                    try {
+                        // Удаляем старые поля участников
+                        await api.delete(`/responses/custom-fields/participant/${eventId}`, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        })
+                        console.log('Старые поля участников удалены')
+                    } catch (err) {
+                        console.log('Нет старых полей участников для удаления или API не поддерживает удаление:', err.message)
+                        // Если API не поддерживает удаление, продолжаем без ошибки
+                    }
 
+                    try {
+                        // Удаляем старые поля команд
+                        await api.delete(`/responses/custom-fields/team/${eventId}`, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        })
+                        console.log('Старые поля команд удалены')
+                    } catch (err) {
+                        console.log('Нет старых полей команд для удаления или API не поддерживает удаление:', err.message)
+                        // Если API не поддерживает удаление, продолжаем без ошибки
+                    }
+                }
+
+                // Создаем новые поля участников
                 if (event.value.fields.participant.length > 0) {
                     const participantFieldsPayload = {
                         event_id: eventId,
@@ -875,7 +908,6 @@ const submitEvent = async () => {
                             name: f.label,
                             type: f.type,
                             require: true,
-
                             options: Array.isArray(f.options) ? f.options.join(',') : ''
                         }))
                     }
@@ -888,7 +920,7 @@ const submitEvent = async () => {
                     console.log('Ответ на создание полей участников:', participantRes.data)
                 }
 
-
+                // Создаем новые поля команд
                 if (event.value.fields.group.length > 0) {
                     const teamFieldsPayload = {
                         event_id: eventId,
@@ -896,7 +928,6 @@ const submitEvent = async () => {
                             name: f.label,
                             type: f.type,
                             require: true,
-
                             options: Array.isArray(f.options) ? f.options.join(',') : ''
                         }))
                     }
@@ -963,29 +994,91 @@ const submitEvent = async () => {
 const selectEvent = async (ev) => {
     if (selectedEventId.value === ev.id) return
     selectedEventId.value = ev.id
+    isLoadingEvent.value = true
+
     try {
-        const res = await api.get(`/event/${ev.id}`)
-        const data = res.data
-        const fields = {
-            participant: [],
-            group: []
+        const token = await getValidToken()
+        if (!token) {
+            alert('Необходимо авторизоваться')
+            window.location.href = '/login'
+            return
         }
 
-        for (const f of data.fields || []) {
-            const field = {
+        const res = await api.get(`/event/${ev.id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+        const data = res.data
+
+        // Загружаем кастомные поля участников
+        let participantFields = []
+        try {
+            const participantFieldsRes = await api.get(`/responses/custom-fields/participant/${ev.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            console.log('Сырой ответ API для полей участников:', participantFieldsRes.data)
+            console.log('Тип данных:', typeof participantFieldsRes.data)
+            console.log('Является ли массивом:', Array.isArray(participantFieldsRes.data))
+
+            // Проверяем структуру ответа и извлекаем массив полей
+            if (participantFieldsRes.data && Array.isArray(participantFieldsRes.data)) {
+                participantFields = participantFieldsRes.data
+            } else if (participantFieldsRes.data && Array.isArray(participantFieldsRes.data.fields)) {
+                participantFields = participantFieldsRes.data.fields
+            } else if (participantFieldsRes.data && participantFieldsRes.data.data && Array.isArray(participantFieldsRes.data.data)) {
+                participantFields = participantFieldsRes.data.data
+            }
+            console.log('Загруженные поля участников:', participantFields)
+        } catch (err) {
+            console.log('Нет кастомных полей участников или ошибка загрузки:', err.message)
+        }
+
+        // Загружаем кастомные поля команд
+        let teamFields = []
+        try {
+            const teamFieldsRes = await api.get(`/responses/custom-fields/team/${ev.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            console.log('Сырой ответ API для полей команд:', teamFieldsRes.data)
+            console.log('Тип данных:', typeof teamFieldsRes.data)
+            console.log('Является ли массивом:', Array.isArray(teamFieldsRes.data))
+
+            // Проверяем структуру ответа и извлекаем массив полей
+            if (teamFieldsRes.data && Array.isArray(teamFieldsRes.data)) {
+                teamFields = teamFieldsRes.data
+            } else if (teamFieldsRes.data && Array.isArray(teamFieldsRes.data.fields)) {
+                teamFields = teamFieldsRes.data.fields
+            } else if (teamFieldsRes.data && teamFieldsRes.data.data && Array.isArray(teamFieldsRes.data.data)) {
+                teamFields = teamFieldsRes.data.data
+            }
+            console.log('Загруженные поля команд:', teamFields)
+        } catch (err) {
+            console.log('Нет кастомных полей команд или ошибка загрузки:', err.message)
+        }
+
+        // Преобразуем поля в нужный формат
+        const fields = {
+            participant: Array.isArray(participantFields) ? participantFields.map(f => ({
                 label: f.name,
                 type: f.type,
                 description: f.description || '',
                 hint: f.hint || '',
-
                 options: f.type === 'select' && f.options ? f.options.split(',').map(opt => opt.trim()) : [],
                 newOption: ''
-            }
-            if (f.forTeam) {
-                fields.group.push(field)
-            } else {
-                fields.participant.push(field)
-            }
+            })) : [],
+            group: Array.isArray(teamFields) ? teamFields.map(f => ({
+                label: f.name,
+                type: f.type,
+                description: f.description || '',
+                hint: f.hint || '',
+                options: f.type === 'select' && f.options ? f.options.split(',').map(opt => opt.trim()) : [],
+                newOption: ''
+            })) : []
         }
 
         event.value = {
@@ -997,16 +1090,24 @@ const selectEvent = async (ev) => {
             maxParticipants: data.maxParticipantNumber,
             location: data.eventAddress,
             grouping: data.grouping,
-            qrCode: data.qrCode || data.grouping, // Используем qrCode, если нет - fallback на grouping
+            qrCode: data.qrCode || data.grouping,
             format: data.online ? 'online' : 'offline',
             fields
         }
 
         imagePreview.value = data.image || ''
 
-
+        // Показываем секцию кастомных полей, если есть поля
         showCustomFields.value = fields.participant.length > 0 || fields.group.length > 0
 
+        // Устанавливаем правильный режим полей
+        if (fields.participant.length > 0 && fields.group.length > 0) {
+            fieldMode.value = 'participant' // По умолчанию показываем поля участников
+        } else if (fields.participant.length > 0) {
+            fieldMode.value = 'participant'
+        } else if (fields.group.length > 0) {
+            fieldMode.value = 'group'
+        }
 
         if (window.innerWidth <= 768 && isSidebarOpen.value) {
             toggleSidebar()
@@ -1014,6 +1115,20 @@ const selectEvent = async (ev) => {
 
     } catch (err) {
         console.error('Ошибка загрузки события', err)
+        if (err.response?.status === 401) {
+            try {
+                await refreshToken()
+                return await selectEvent(ev)
+            } catch (refreshErr) {
+                alert('Сессия истекла. Перенаправление на страницу входа...')
+                window.location.href = '/login'
+                throw refreshErr
+            }
+        } else {
+            alert('Ошибка при загрузке мероприятия. Пожалуйста, попробуйте снова.')
+        }
+    } finally {
+        isLoadingEvent.value = false
     }
 }
 
@@ -1142,6 +1257,7 @@ const addFieldFromTemplate = (template) => {
 
 
 const isSidebarOpen = ref(false)
+const isLoadingEvent = ref(false)
 
 
 const toggleSidebar = () => {
@@ -2376,7 +2492,7 @@ button.create:disabled {
 }
 
 .event-sidebar {
-    top: 60px;
+    top: 30px;
 
 }
 
@@ -2419,5 +2535,34 @@ button.create:disabled {
     margin-top: 0.5rem;
     text-align: center;
     animation: fadeIn 0.3s ease-out;
+}
+
+.loading-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: #ccc;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #333;
+    border-top: 3px solid #9333ea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 </style>

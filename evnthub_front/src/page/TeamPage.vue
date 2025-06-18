@@ -180,9 +180,16 @@
                     <div class="upcoming-event" v-for="team in userTeams" :key="team.id" @click="selectTeam(team)"
                         :class="{ active: selectedTeam?.id === team.id }">
                         <p>{{ team.name || 'Без названия' }}</p>
-                        <button @click.stop="editTeam(team)">Редактировать</button>
+                        <button v-if="selectedTeam?.id === team.id" class="delete-btn"
+                            @click.stop="confirmDeleteTeam(team)"
+                            title="Удалить эту команду без возможности восстановления.">
+                            Удалить
+                        </button>
                     </div>
                 </div>
+                <button class="submit-btn" @click="resetForm" title="Очистить форму и начать создание новой команды.">
+                    Создать новую команду
+                </button>
             </div>
 
             <div class="sidebar-overlay" v-if="isSidebarOpen" @click="toggleSidebar"></div>
@@ -372,7 +379,7 @@ const validateField = (field) => {
 }
 
 const isFormValid = computed(() => {
-    if (!team.value.name.trim()) return false
+    if (!team.value.name || !team.value.name.trim()) return false
     if (!selectedEventId.value) return false
 
     // Проверяем, что выбранное мероприятие поддерживает команды
@@ -451,7 +458,13 @@ const selectTeam = async (teamItem) => {
 
     // Загружаем кастомные поля команды
     try {
-        const customFieldsRes = await api.get(`/responses/team/${teamItem.eventId || selectedEventId.value}/${teamItem.id}`)
+        const eventId = teamItem.event_id || selectedEventId.value
+
+        if (!eventId) {
+            console.warn('⚠️ Невозможно загрузить кастомные поля: eventId отсутствует')
+            return
+        }
+        const customFieldsRes = await api.get(`/responses/team/${eventId}/${teamItem.id}`)
         console.log('📝 Существующие кастомные поля команды:', customFieldsRes.data)
         if (customFieldsRes.data && customFieldsRes.data.responses) {
             Object.keys(customFieldsRes.data.responses).forEach(key => {
@@ -476,11 +489,6 @@ const selectTeam = async (teamItem) => {
     } catch (e) {
         invites.value = []
     }
-    isTeamCreated.value = true
-}
-
-const editTeam = async (teamItem) => {
-    await selectTeam(teamItem)
     isTeamCreated.value = true
 }
 
@@ -512,56 +520,52 @@ const submitTeam = async () => {
     loading.value = true
 
     try {
-        console.log('[DEBUG] submitTeam: payload для POST /teams:', {
-            event_id: selectedEventId.value,
-            name: team.value.name,
-            leader_id: userId,
-            type: 'FIXED',
-        })
+        // 1. Создаём команду без image
         const res = await api.post('/teams', {
             event_id: selectedEventId.value,
             name: team.value.name,
             leader_id: userId,
-            type: 'FIXED',
+            type: 'FIXED'
         })
         console.log('[DEBUG] submitTeam: response от POST /teams:', res)
         const createdId = res.data.team_id
+        let imageUrl = ''
 
-        // Загружаем изображение команды, если есть
+        // 2. Если есть картинка — загружаем её с entity_id = team_id
         if (imageFile.value) {
             const formData = new FormData()
             formData.append('file', imageFile.value)
             formData.append('uploaded_by', userId)
             formData.append('entity_type', 'TEAM')
             formData.append('entity_id', createdId)
-
             try {
-                console.log('📤 Загрузка изображения команды...')
                 const uploadRes = await api.post('/storage/upload', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
                     }
                 })
-                console.log('✅ Изображение команды загружено:', uploadRes.data)
+                if (uploadRes.data && uploadRes.data.s3_url) {
+                    imageUrl = uploadRes.data.s3_url
+                    // 3. PATCH /teams/{team_id} с image
+                    await api.patch(`/teams/${createdId}/update`, { image: imageUrl })
+                }
             } catch (imageErr) {
                 console.error('❌ Ошибка загрузки изображения:', imageErr)
                 // Не прерываем создание команды из-за ошибки загрузки изображения
             }
         }
 
-        // Отправляем кастомные поля команды
+        // 4. Отправляем кастомные поля команды
         if (customFields.value.length > 0) {
             const filledFields = {}
             Object.keys(customFieldValues.value).forEach(key => {
                 const value = customFieldValues.value[key]
                 if (value !== null && value !== undefined && value !== '') {
-                    // Для строк проверяем, что они не пустые после trim
                     if (typeof value === 'string') {
                         if (value.trim() !== '') {
                             filledFields[key] = value
                         }
                     } else {
-                        // Для чисел и других типов просто добавляем
                         filledFields[key] = value
                     }
                 }
@@ -578,14 +582,12 @@ const submitTeam = async () => {
                     console.log('✅ Кастомные поля команды отправлены')
                 } catch (customFieldsErr) {
                     console.error('❌ Ошибка отправки кастомных полей:', customFieldsErr)
-                    // Не прерываем создание команды из-за ошибки кастомных полей
                 }
             }
         }
 
-        // Регистрируем лидера как участника
+        // 5. Регистрируем лидера как участника
         try {
-            // Сначала проверяем, зарегистрирован ли пользователь
             const checkRegistration = await api.get(`/participants/check/${userId}/${selectedEventId.value}`)
             const isAlreadyRegistered = checkRegistration.data && checkRegistration.data.isRegistered === true
 
@@ -599,7 +601,6 @@ const submitTeam = async () => {
                 console.log('✅ Лидер зарегистрирован как участник')
             } else {
                 console.log('ℹ️ Лидер уже зарегистрирован на мероприятие')
-                // Обновляем команду для уже зарегистрированного участника
                 try {
                     const participantInfo = await api.get(`/participants/${userId}/${selectedEventId.value}/info`)
                     if (participantInfo.data && participantInfo.data.id) {
@@ -658,6 +659,26 @@ const cancelInvite = async (id) => {
 const removeMember = async (id) => {
     await api.delete(`/teams/${team.value.id}/remove-member/${id}`)
     await selectTeam(team.value)
+}
+
+const confirmDeleteTeam = async (teamToDelete) => {
+    if (confirm(`Вы уверены, что хотите удалить команду "${teamToDelete.name}"? Это действие нельзя отменить.`)) {
+        try {
+            await api.delete(`/teams/${teamToDelete.id}`)
+            toast.success('Команда успешно удалена')
+
+            // Если удаляемая команда была выбрана, сбрасываем форму
+            if (selectedTeam.value?.id === teamToDelete.id) {
+                resetForm()
+            }
+
+            // Перезагружаем список команд
+            await loadUserTeams()
+        } catch (error) {
+            console.error('❌ Ошибка при удалении команды:', error)
+            toast.error('Ошибка при удалении команды')
+        }
+    }
 }
 
 const inviteSelectedUser = async () => {
@@ -1012,7 +1033,7 @@ const loadEventById = async (eventId) => {
     display: flex;
     width: 100%;
     max-width: 1400px;
-
+    min-width: 800px;
 }
 
 .team-form {
@@ -1021,6 +1042,9 @@ const loadEventById = async (eventId) => {
     padding: 2rem;
     flex: 2;
     animation: slideInLeft 0.6s ease-out;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
 }
 
 .header {
@@ -1100,13 +1124,13 @@ select:focus {
 .create {
     background: linear-gradient(to right, #3b82f6, #9333ea);
     color: white;
-    padding: 0.8rem 1.5rem;
+    padding: 0.6rem 1.2rem;
     border: none;
-    font-size: 1.1rem;
+    font-size: larger;
     border-radius: 8px;
+    margin-top: 1rem;
     cursor: pointer;
     transition: all 0.3s ease;
-    margin-top: 1rem;
     width: 100%;
     max-width: 300px;
 }
@@ -1117,8 +1141,9 @@ select:focus {
 }
 
 .create:disabled {
-    background: #666;
+    background: #555;
     cursor: not-allowed;
+    opacity: 0.6;
     transform: none;
     box-shadow: none;
 }
@@ -1170,7 +1195,7 @@ select:focus {
 
 .custom-field input {
     width: 100%;
-    padding: 0.7rem;
+    padding: 0.8rem;
     border-radius: 6px;
     border: 1px solid #555;
     background: #181818;
@@ -1305,6 +1330,14 @@ select:focus {
     transition: all 0.3s ease;
     border: 1px solid #333;
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.upcoming-event p {
+    margin: 0;
+    font-weight: 500;
 }
 
 .upcoming-event:hover {
@@ -1331,6 +1364,11 @@ select:focus {
     transition: all 0.3s ease;
 }
 
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(147, 51, 234, 0.4);
+}
+
 /* Добавляем стили для мобильных устройств */
 @media (max-width: 768px) {
     .team-page {
@@ -1341,6 +1379,7 @@ select:focus {
     .main-section {
         flex-direction: column;
         gap: 0;
+        min-width: unset;
     }
 
     .team-form {
@@ -1382,6 +1421,8 @@ select:focus {
         width: 100%;
         max-width: none;
         padding: 1rem;
+        font-size: 1.2rem;
+        font-weight: 600;
     }
 
     .participant-item,
@@ -1458,11 +1499,6 @@ select:focus {
 
     .custom-field input {
         padding: 0.8rem;
-        font-size: 1rem;
-    }
-
-    .create {
-        padding: 1rem;
         font-size: 1rem;
     }
 
@@ -2030,5 +2066,23 @@ select:focus {
 .participant-badge {
     background: #22c55e;
     color: white;
+}
+
+/* Добавляем стили для кнопки удаления */
+.delete-btn {
+    background: #dc2626;
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.delete-btn:hover {
+    background: #b91c1c;
+    transform: translateY(-2px);
 }
 </style>
