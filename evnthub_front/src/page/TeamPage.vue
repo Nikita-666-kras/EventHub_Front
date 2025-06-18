@@ -11,8 +11,7 @@
         <div class="main-section">
             <div class="team-form">
                 <div class="header">
-                    <input v-model="team.name" placeholder="Название команды" class="team-title"
-                        :disabled="isTeamCreated" />
+                    <input v-model="team.name" placeholder="Название команды" class="team-title" />
                     <div class="image-upload">
                         <label for="imageInput">
                             <div class="image-preview"
@@ -22,6 +21,8 @@
                         </label>
                         <input id="imageInput" type="file" accept="image/*" @change="handleImageUpload" hidden />
                     </div>
+                    <button v-if="isTeamCreated && hasTeamChanges" @click="saveTeamChanges" class="create"
+                        style="max-width:180px;margin-left:1rem;">Сохранить изменения</button>
                 </div>
                 <p v-if="isTeamCreated && teamEventName" class="team-event-name">
                     Мероприятие: <strong>{{ teamEventName }}</strong>
@@ -232,6 +233,7 @@ const eventSearchQuery = ref('')
 const showEventDropdown = ref(false)
 const filteredEvents = ref([])
 const isSearching = ref(false)
+const isEditing = ref(false)
 
 const getParticipantDisplayName = (participant) => {
     const user = participant.user || {}
@@ -844,6 +846,13 @@ onMounted(async () => {
             document.body.style.overflow = ''
         }
     })
+
+    // Сохраняем оригинальное имя для отслеживания изменений
+    watch(team, (val) => {
+        if (val && val.name) {
+            team.value._originalName = val.name
+        }
+    }, { immediate: true })
 })
 
 onUnmounted(() => {
@@ -1048,6 +1057,51 @@ const loadEventById = async (eventId) => {
     } catch (e) {
         console.error('❌ Ошибка загрузки мероприятия по ID:', e)
         toast.error('Мероприятие не найдено')
+    }
+}
+
+const hasTeamChanges = computed(() => {
+    if (!isTeamCreated.value) return false
+    return (
+        team.value.name !== (team.value._originalName || team.value.name) ||
+        imageFile.value !== null
+    )
+})
+
+const saveTeamChanges = async () => {
+    if (!team.value.id) return
+    const userId = getUserIdFromToken()
+    let imageUrl = team.value.image || ''
+    try {
+        // Если есть новый файл, загружаем его на /storage/upload
+        if (imageFile.value) {
+            const formData = new FormData()
+            formData.append('file', imageFile.value)
+            formData.append('uploaded_by', userId)
+            formData.append('entity_type', 'TEAM')
+            formData.append('entity_id', team.value.id)
+            const uploadRes = await api.post('/storage/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+            if (!uploadRes.data?.s3_url) {
+                toast.error('Ошибка загрузки изображения: не получен URL')
+                return
+            }
+            imageUrl = uploadRes.data.s3_url
+        }
+        // Сохраняем url картинки в поле image
+        await api.patch(`/teams/${team.value.id}/update`, {
+            name: team.value.name,
+            image: imageUrl
+        })
+        team.value.image = imageUrl
+        team.value._originalName = team.value.name
+        imageFile.value = null
+        imagePreview.value = imageUrl
+        toast.success('Команда успешно обновлена!')
+    } catch (e) {
+        toast.error('Ошибка при сохранении изменений')
+        console.error(e)
     }
 }
 </script>

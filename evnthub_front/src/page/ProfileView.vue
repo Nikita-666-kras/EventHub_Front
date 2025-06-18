@@ -48,9 +48,11 @@
 
         <div class="profile-info">
           <div class="left">
-            <label v-if="isEditing" for="avatarInput">
+            <label v-if="isEditing" for="avatarInput" style="position: relative; display: inline-block;">
               <div class="avatar clickable" :style="avatarPreview ? { backgroundImage: `url('${avatarPreview}')` } : {}"
-                title="Нажмите, чтобы выбрать изображение"></div>
+                title="Нажмите, чтобы выбрать изображение">
+                <span class="edit-avatar-label">Изменить</span>
+              </div>
             </label>
             <div v-else class="avatar" :style="avatarPreview ? { backgroundImage: `url('${avatarPreview}')` } : {}">
             </div>
@@ -63,7 +65,7 @@
             </div>
             <div class="field-row"><span class="label">Имя:</span>
               <span v-if="!isEditing">{{ user.name }}</span>
-              <input v-else v-model="editedUser.name" />
+              <input v-else v-model="editedUser.name" placeholder="Введите имя" />
             </div>
             <div class="field-row"><span class="label">Отчество:</span>
               <span v-if="!isEditing">{{ user.middleName }}</span>
@@ -1475,5 +1477,20 @@ const goToEvent = (eventId) => {
   .upcoming {
     max-width: 400px;
   }
+}
+
+.edit-avatar-label {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #fff;
+  background: rgba(60, 60, 60, 0.7);
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 0 0 12px 12px;
+  padding: 0.4rem 0;
+  pointer-events: none;
 }
 </style>
