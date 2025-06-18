@@ -138,6 +138,10 @@
                                             src="@/assets/icons/stats.png" /></label>
                                 </template>
                             </div>
+                            <!-- <div v-if="visibleFieldModes.length === 1" class="auto-switch-notice">
+                                <small>Автоматически переключено на {{ fieldMode === 'participant' ? 'участников' :
+                                    'команды' }}</small>
+                            </div> -->
                         </div>
                     </div>
 
@@ -301,6 +305,7 @@ const event = ref({
     location: '',
     grouping: 'both',
     format: 'offline',
+    qrCode: 'both', // Добавляем поле qrCode для группировки
     fields: {
         participant: [],
         group: []
@@ -308,8 +313,8 @@ const event = ref({
 })
 
 const visibleFieldModes = computed(() => {
-    if (event.value.grouping === 'Только соло') return ['participant']
-    if (event.value.grouping === 'Только группы') return ['group']
+    if (event.value.grouping === 'solo') return ['participant']
+    if (event.value.grouping === 'group') return ['group']
     return ['participant', 'group']
 })
 
@@ -649,7 +654,7 @@ const minDate = computed(() => {
 
 const maxDate = computed(() => {
     const maxDate = new Date()
-    maxDate.setFullYear(maxDate.getFullYear() + 1) 
+    maxDate.setFullYear(maxDate.getFullYear() + 1)
     return maxDate.toISOString().split('T')[0]
 })
 
@@ -697,7 +702,7 @@ const loadDraft = () => {
     try {
         const { event: draftEvent, imagePreview: draftImage, fieldMode: draftMode, timestamp } = JSON.parse(draft)
 
-       
+
         const draftDate = new Date(timestamp)
         const now = new Date()
         if (now - draftDate > 24 * 60 * 60 * 1000) {
@@ -764,10 +769,11 @@ const resetForm = () => {
         date: '',
         time: '',
         endTime: '',
-        maxParticipants: 15, 
+        maxParticipants: 15,
         location: '',
         grouping: 'both',
         format: 'offline',
+        qrCode: 'both', // Добавляем поле qrCode для группировки
         fields: {
             participant: [],
             group: []
@@ -797,7 +803,7 @@ const submitEvent = async () => {
 
         const now = new Date().toISOString().slice(0, 19)
 
-        
+
         const payload = {
             eventName: event.value.title,
             creatorId: getUserIdFromToken(),
@@ -811,9 +817,8 @@ const submitEvent = async () => {
             currentParticipantQuantity: 0,
             eventAddress: event.value.location,
             isRecurring: false,
-            qrCode: 'string',
-            grouping: event.value.grouping === 'Группы и соло' ? 'both' :
-                event.value.grouping === 'Только соло' ? 'solo' : 'group'
+            qrCode: event.value.qrCode, // Используем qrCode для группировки
+            grouping: event.value.grouping // Оставляем для совместимости
         }
 
         console.log('Отправка события:', payload)
@@ -837,12 +842,12 @@ const submitEvent = async () => {
             eventId = createRes.data?.id
         }
 
-        
+
         if (imageFile.value && eventId) {
             try {
                 const imageUrl = await uploadToS3(eventId)
                 if (imageUrl) {
-                    
+
                     const updatePayload = {
                         ...payload,
                         image: imageUrl
@@ -859,10 +864,10 @@ const submitEvent = async () => {
             }
         }
 
-        
+
         if (eventId && (event.value.fields.participant.length > 0 || event.value.fields.group.length > 0)) {
             try {
-                
+
                 if (event.value.fields.participant.length > 0) {
                     const participantFieldsPayload = {
                         event_id: eventId,
@@ -870,7 +875,7 @@ const submitEvent = async () => {
                             name: f.label,
                             type: f.type,
                             require: true,
-                            
+
                             options: Array.isArray(f.options) ? f.options.join(',') : ''
                         }))
                     }
@@ -883,7 +888,7 @@ const submitEvent = async () => {
                     console.log('Ответ на создание полей участников:', participantRes.data)
                 }
 
-                
+
                 if (event.value.fields.group.length > 0) {
                     const teamFieldsPayload = {
                         event_id: eventId,
@@ -891,7 +896,7 @@ const submitEvent = async () => {
                             name: f.label,
                             type: f.type,
                             require: true,
-                            
+
                             options: Array.isArray(f.options) ? f.options.join(',') : ''
                         }))
                     }
@@ -919,7 +924,7 @@ const submitEvent = async () => {
             }
         }
 
-        
+
         hasUnsavedChanges.value = false
         localStorage.removeItem('eventDraft')
 
@@ -972,9 +977,9 @@ const selectEvent = async (ev) => {
                 type: f.type,
                 description: f.description || '',
                 hint: f.hint || '',
-                
+
                 options: f.type === 'select' && f.options ? f.options.split(',').map(opt => opt.trim()) : [],
-                newOption: '' 
+                newOption: ''
             }
             if (f.forTeam) {
                 fields.group.push(field)
@@ -992,16 +997,17 @@ const selectEvent = async (ev) => {
             maxParticipants: data.maxParticipantNumber,
             location: data.eventAddress,
             grouping: data.grouping,
+            qrCode: data.qrCode || data.grouping, // Используем qrCode, если нет - fallback на grouping
             format: data.online ? 'online' : 'offline',
             fields
         }
 
         imagePreview.value = data.image || ''
 
-        
+
         showCustomFields.value = fields.participant.length > 0 || fields.group.length > 0
 
-        
+
         if (window.innerWidth <= 768 && isSidebarOpen.value) {
             toggleSidebar()
         }
@@ -1125,8 +1131,8 @@ const fieldTemplates = {
 }
 
 const addFieldFromTemplate = (template) => {
-    
-    const newField = JSON.parse(JSON.stringify(template)); 
+
+    const newField = JSON.parse(JSON.stringify(template));
     if (newField.type === 'select' && !Array.isArray(newField.options)) {
         newField.options = [];
     }
@@ -1140,7 +1146,7 @@ const isSidebarOpen = ref(false)
 
 const toggleSidebar = () => {
     isSidebarOpen.value = !isSidebarOpen.value
-    
+
     document.body.style.overflow = isSidebarOpen.value ? 'hidden' : ''
 }
 
@@ -1153,6 +1159,33 @@ onMounted(() => {
         }
     })
 })
+
+// Добавляем watch для автоматического переключения fieldMode
+watch(() => event.value.grouping, (newGrouping) => {
+    if (newGrouping === 'solo') {
+        fieldMode.value = 'participant'
+    } else if (newGrouping === 'group') {
+        fieldMode.value = 'group'
+    } else if (newGrouping === 'both') {
+        // Если выбрано "и то и другое", оставляем текущий режим или переключаем на participant по умолчанию
+        if (!visibleFieldModes.value.includes(fieldMode.value)) {
+            fieldMode.value = 'participant'
+        }
+    }
+}, { immediate: true }) // Добавляем immediate: true для выполнения при инициализации
+
+watch(() => event.value.qrCode, (newQrCode) => {
+    if (newQrCode === 'solo') {
+        fieldMode.value = 'participant'
+    } else if (newQrCode === 'group') {
+        fieldMode.value = 'group'
+    } else if (newQrCode === 'both') {
+        // Если выбрано "и то и другое", оставляем текущий режим или переключаем на participant по умолчанию
+        if (!visibleFieldModes.value.includes(fieldMode.value)) {
+            fieldMode.value = 'participant'
+        }
+    }
+}, { immediate: true }) // Добавляем immediate: true для выполнения при инициализации
 </script>
 
 <style scoped>
@@ -1210,7 +1243,7 @@ onMounted(() => {
     align-items: center;
     gap: 2px;
     margin-left: 2rem;
-    transition: width 0.5s ease;
+    transition: all 0.5s ease;
 }
 
 .view-switch input[type="radio"] {
@@ -1224,10 +1257,12 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.3s ease;
 }
 
 .view-switch input[type="radio"]:checked+label {
     background: #150a1e;
+    transform: scale(1.05);
 }
 
 .view-switch img {
@@ -1956,7 +1991,7 @@ button.create:disabled {
         border-radius: 10px;
         margin-bottom: 1rem;
         font-size: 16px;
-        
+
     }
 
     .event-sidebar {
@@ -2332,7 +2367,7 @@ button.create:disabled {
 
     .event-create-page {
         padding-top: 76px;
-        
+
     }
 
     .event-form {
@@ -2342,12 +2377,12 @@ button.create:disabled {
 
 .event-sidebar {
     top: 60px;
-    
+
 }
 
 .sidebar-overlay {
     top: 60px;
-    
+
 }
 
 .burger-menu:active {
@@ -2376,5 +2411,13 @@ button.create:disabled {
 
 .burger-menu-wrapper {
     animation: slideDown 0.3s ease-out;
+}
+
+.auto-switch-notice {
+    font-size: 0.8rem;
+    color: #ccc;
+    margin-top: 0.5rem;
+    text-align: center;
+    animation: fadeIn 0.3s ease-out;
 }
 </style>

@@ -132,12 +132,17 @@
       </div>
 
       <div class="upcoming" :class="{ 'mobile-open': isSidebarOpen }">
-        <h4>Грядущие мероприятия</h4>
-        <div class="event-upcoming" v-for="event in upcomingEvents" :key="event.id">
-          <p>{{ event.eventName }}</p>
-          <div class="calendar">
-            <img src="@/assets/login_icons/calendar.png" class="icons">
-            <p>{{ formatDate(event.startDateAndTime) }}</p>
+        <div class="sidebar-header">
+          <h4>Грядущие мероприятия</h4>
+        </div>
+        <div class="event-sidebar-scroll">
+          <div class="event-upcoming" v-for="event in upcomingEvents" :key="event.id" @click="goToEvent(event.id)"
+            :title="`Кликните, чтобы перейти к мероприятию '${event.eventName}'`">
+            <p>{{ event.eventName }}</p>
+            <div class="calendar">
+              <img src="@/assets/login_icons/calendar.png" class="icons">
+              <p>{{ formatDate(event.startDateAndTime) }}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -150,7 +155,10 @@
 <script setup>
 import NavBar from '@/components/nav_bar.vue'
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
+
+const router = useRouter()
 
 const user = ref({})
 const soloEvents = ref([])
@@ -506,6 +514,10 @@ onMounted(async () => {
   }
 })
 
+const goToEvent = (eventId) => {
+  router.push(`/event/${eventId}`)
+}
+
 </script>
 
 <style scoped>
@@ -801,9 +813,10 @@ onMounted(async () => {
   top: 2rem;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-.upcoming h4 {
+.sidebar-header {
   position: sticky;
   top: 0;
   background: #222;
@@ -816,14 +829,20 @@ onMounted(async () => {
   margin: 0;
 }
 
-.upcoming .event-upcoming {
-  padding: 1rem;
+.sidebar-header h4 {
+  margin: 0;
+  color: #fff;
+}
+
+.event-sidebar-scroll {
+  flex-grow: 1;
   overflow-y: auto;
+  padding: 1rem;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-.upcoming .event-upcoming::-webkit-scrollbar {
+.event-sidebar-scroll::-webkit-scrollbar {
   display: none;
 }
 
@@ -834,18 +853,13 @@ onMounted(async () => {
   margin-bottom: 1rem;
   transition: all 0.3s ease;
   border: 1px solid #333;
+  cursor: pointer;
 }
 
 .event-upcoming:hover {
   transform: translateY(-3px);
   border-color: #9333ea;
   box-shadow: 0 4px 20px rgba(147, 51, 234, 0.2);
-}
-
-.event-upcoming.active {
-  border: 1px solid #9333ea;
-  background: #555;
-  animation: pulse 2s infinite;
 }
 
 .event-upcoming p {
@@ -875,20 +889,6 @@ onMounted(async () => {
   to {
     opacity: 1;
     transform: translateX(0);
-  }
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.4);
-  }
-
-  70% {
-    box-shadow: 0 0 0 10px rgba(147, 51, 234, 0);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0);
   }
 }
 
@@ -1065,6 +1065,58 @@ onMounted(async () => {
     padding: 0.8rem;
     font-size: 1rem;
   }
+
+  .upcoming.mobile-open {
+    right: 0;
+  }
+
+  .sidebar-header {
+    padding: 1.2rem;
+    background: #222;
+    border-bottom: 1px solid #444;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .sidebar-header h4 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+    text-align: center;
+  }
+
+  .event-sidebar-scroll {
+    padding: 1rem;
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .event-upcoming {
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    transition: all 0.3s ease;
+  }
+
+  .event-upcoming p {
+    margin: 0.5rem 0;
+    font-size: 1.1rem;
+    line-height: 1.4;
+  }
+
+  .event-upcoming p:first-child {
+    font-weight: 600;
+    font-size: 1.2rem;
+  }
+
+  .sidebar-overlay {
+    display: block;
+  }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
@@ -1160,6 +1212,7 @@ onMounted(async () => {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1359,7 +1412,7 @@ onMounted(async () => {
 @media (min-width: 1025px) {
   .content {
     justify-content: center;
-    
+
   }
 
   .profile-card {

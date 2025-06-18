@@ -34,6 +34,8 @@
 
         <div class="analytics-section" v-if="answers.length && selectedField">
           <h4>Аналитика по полю "{{ selectedField.label }}"</h4>
+          <canvas ref="chartRef" style="max-width: 100%; margin-top: 2rem;"></canvas>
+
           <div class="stats-container">
             <div class="stats-list">
               <div v-for="(value, i) in aggregatedAnswers" :key="i" class="stat-item">
@@ -42,7 +44,7 @@
                   <div class="stat-fill" :style="{ width: `${(value.count / answers.length) * 100}%` }"></div>
                 </div>
                 <span class="stat-count">{{ value.count }} ({{ Math.round((value.count / answers.length) * 100)
-                }}%)</span>
+                  }}%)</span>
               </div>
             </div>
           </div>
@@ -60,12 +62,32 @@
           </template>
 
           <template v-else>
-            <div class="group" v-for="(group, index) in groupedParticipants" :key="index">
-              <div class="group-title">{{ group.name }}</div>
-              <div class="group-member" v-for="(p, i) in group.members" :key="i">
-                <div class="avatar"></div>
-                <span class="name">{{ p.name }}</span>
-                <span class="email">{{ p.email }}</span>
+            <div v-if="groupedParticipants.length === 0" class="no-teams">
+              <p>Команды не найдены для этого мероприятия</p>
+            </div>
+            <div v-else class="teams-container">
+              <div class="team" v-for="(team, index) in groupedParticipants" :key="index">
+                <div class="team-header">
+                  <div class="team-info">
+                    <h4 class="team-name">{{ team.name }}</h4>
+                    <span class="team-member-count">{{ team.members?.length || 0 }} участников</span>
+                  </div>
+                  <div class="team-actions">
+                    <button class="team-action-btn" @click="viewTeamDetails(team)" title="Просмотр деталей команды">
+                      👁️
+                    </button>
+                  </div>
+                </div>
+                <div class="team-members">
+                  <div class="team-member" v-for="(member, i) in team.members" :key="i">
+                    <div class="member-avatar"></div>
+                    <div class="member-info">
+                      <span class="member-name">{{ member.name || member.nickname || 'Без имени' }}</span>
+                      <span class="member-email">{{ member.email || 'Email не указан' }}</span>
+                    </div>
+                    <span v-if="member.isLeader" class="leader-badge">Лидер</span>
+                  </div>
+                </div>
               </div>
             </div>
           </template>
@@ -92,6 +114,13 @@
 import NavBar from '@/components/nav_bar.vue'
 import { ref, watch, onMounted, computed } from 'vue'
 import api from '@/utils/axios'
+import { useToast } from 'vue-toastification'
+
+import { Chart, registerables } from 'chart.js'
+import { onBeforeUnmount } from 'vue'
+Chart.register(...registerables)
+
+const toast = useToast()
 
 const viewMode = ref('single')
 const selectedField = ref(null)
@@ -103,6 +132,70 @@ const selectedEvent = ref(null)
 const eventTitle = ref('')
 const userEvents = ref([])
 const isSidebarOpen = ref(false)
+
+const chartRef = ref(null)
+let chartInstance = null
+
+const aggregatedAnswers = computed(() => {
+  if (!selectedField.value || !answers.value.length) return []
+
+  const fieldKey = selectedField.value.label
+  const map = new Map()
+
+  answers.value.forEach(resp => {
+    const val = resp.responses?.[fieldKey]
+    if (val === undefined || val === null) return
+
+    if (selectedField.value.type === 'number') {
+      const numVal = Number(val)
+      if (isNaN(numVal)) return
+      const range = Math.floor(numVal / 10) * 10
+      const rangeKey = `${range}-${range + 9}`
+      map.set(rangeKey, (map.get(rangeKey) || 0) + 1)
+    } else {
+      map.set(val, (map.get(val) || 0) + 1)
+    }
+  })
+
+  return Array.from(map.entries())
+    .map(([option, count]) => ({ option, count }))
+    .sort((a, b) => b.count - a.count)
+})
+const renderChart = () => {
+  if (!chartRef.value || !selectedField.value || !aggregatedAnswers.value.length) return
+
+  if (chartInstance) {
+    chartInstance.destroy()
+  }
+
+  chartInstance = new Chart(chartRef.value, {
+    type: 'bar',
+    data: {
+      labels: aggregatedAnswers.value.map(item => item.option),
+      datasets: [{
+        label: `Статистика по полю "${selectedField.value.label}"`,
+        data: aggregatedAnswers.value.map(item => item.count),
+        backgroundColor: 'rgba(147, 51, 234, 0.7)',
+        borderColor: 'rgba(147, 51, 234, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  })
+}
+
+watch(aggregatedAnswers, () => {
+  renderChart()
+})
+
+onBeforeUnmount(() => {
+  if (chartInstance) chartInstance.destroy()
+})
 
 const getUserIdFromToken = () => {
   const token = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1]
@@ -123,20 +216,23 @@ const formatDateSafe = (val) => {
 
 const loadCustomFields = async (eventId) => {
   try {
-    // Загружаем поля для участников
-    const participantFields = await api.get(`/api/responses/custom-fields/participant/${eventId}`)
-    // Загружаем поля для команд
-    const teamFields = await api.get(`/api/responses/custom-fields/team/${eventId}`)
+    const participantFieldsRes = await api.get(`/responses/custom-fields/participant/${eventId}`)
+    const teamFieldsRes = await api.get(`/responses/custom-fields/team/${eventId}`)
 
-    // Объединяем поля и форматируем их для селектора
+    // Проверяем структуру ответов
+    const participantFields = Array.isArray(participantFieldsRes.data) ? participantFieldsRes.data :
+      (participantFieldsRes.data?.fields ? participantFieldsRes.data.fields : [])
+    const teamFields = Array.isArray(teamFieldsRes.data) ? teamFieldsRes.data :
+      (teamFieldsRes.data?.fields ? teamFieldsRes.data.fields : [])
+
     availableFields.value = [
-      ...(participantFields.data || []).map(field => ({
+      ...participantFields.map(field => ({
         label: field.name,
         type: field.type,
         required: field.required,
         source: 'participant'
       })),
-      ...(teamFields.data || []).map(field => ({
+      ...teamFields.map(field => ({
         label: field.name,
         type: field.type,
         required: field.required,
@@ -153,27 +249,111 @@ const selectEvent = async (event) => {
   eventTitle.value = event.eventName
   await loadCustomFields(event.id)
   await loadParticipants(event.id)
+  await loadTeams(event.id)
   // Сбрасываем выбранное поле
   selectedField.value = null
 }
 
 const loadParticipants = async (eventId) => {
   try {
-    const res = await api.get(`/participants/${eventId}`)
-    const raw = res.data || []
-    participants.value = await Promise.all(
-      raw.map(async (p) => {
+    const res = await api.get(`/events/${eventId}/participants`)
+    const participants = res.data || []
+
+    // Обрабатываем каждого участника, чтобы получить детальную информацию
+    const processedParticipants = await Promise.all(
+      participants.map(async (participant) => {
         try {
-          const u = await api.get(`/users/${p.userId}`)
-          return { name: u.data.name, email: u.data.email, participantId: p.id }
-        } catch {
-          return { name: 'Ошибка', email: 'Ошибка', participantId: p.id }
+          // Если у участника есть userId, получаем детальную информацию
+          if (participant.userId) {
+            const userRes = await api.get(`/users/${participant.userId}`)
+            return {
+              ...participant,
+              name: userRes.data.name || participant.nickname || 'Без имени',
+              email: userRes.data.email || 'Email не указан'
+            }
+          }
+          // Если нет userId, используем доступные данные
+          return {
+            ...participant,
+            name: participant.name || participant.nickname || 'Без имени',
+            email: participant.email || 'Email не указан'
+          }
+        } catch (e) {
+          console.error(`Ошибка получения данных участника ${participant.userId || participant.id}:`, e)
+          return {
+            ...participant,
+            name: participant.name || participant.nickname || 'Ошибка загрузки',
+            email: participant.email || 'Email не указан'
+          }
         }
       })
     )
+
+    groupedParticipants.value = processedParticipants
   } catch (e) {
     console.error('Ошибка загрузки участников:', e)
+    groupedParticipants.value = []
   }
+}
+
+const loadTeams = async (userId) => {
+  try {
+    const res = await api.get(`/teams/${userId}`)
+    const teams = res.data || []
+
+    // Обрабатываем каждую команду, чтобы получить детальную информацию об участниках
+    const processedTeams = await Promise.all(
+      teams.map(async (team) => {
+        if (team.members && Array.isArray(team.members)) {
+          // Получаем детальную информацию о каждом участнике команды
+          const processedMembers = await Promise.all(
+            team.members.map(async (member) => {
+              try {
+                // Если у участника есть userId, получаем детальную информацию
+                if (member.userId) {
+                  const userRes = await api.get(`/users/${member.userId}`)
+                  return {
+                    ...member,
+                    name: userRes.data.name || member.nickname || 'Без имени',
+                    email: userRes.data.email || 'Email не указан'
+                  }
+                }
+                // Если нет userId, используем доступные данные
+                return {
+                  ...member,
+                  name: member.name || member.nickname || 'Без имени',
+                  email: member.email || 'Email не указан'
+                }
+              } catch (e) {
+                console.error(`Ошибка получения данных участника ${member.userId || member.id}:`, e)
+                return {
+                  ...member,
+                  name: member.name || member.nickname || 'Ошибка загрузки',
+                  email: member.email || 'Email не указан'
+                }
+              }
+            })
+          )
+          return {
+            ...team,
+            members: processedMembers
+          }
+        }
+        return team
+      })
+    )
+
+    groupedParticipants.value = processedTeams
+  } catch (e) {
+    console.error('Ошибка загрузки команд:', e)
+    groupedParticipants.value = []
+  }
+}
+
+const viewTeamDetails = (team) => {
+  // Показываем информацию о команде в toast или можно добавить модальное окно
+  const memberNames = team.members?.map(m => m.name || m.nickname || 'Без имени').join(', ') || 'Нет участников'
+  toast.info(`Команда "${team.name}": ${memberNames}`)
 }
 
 const loadAnswers = async (eventId) => {
@@ -183,13 +363,43 @@ const loadAnswers = async (eventId) => {
     let responses = []
 
     if (selectedField.value.source === 'participant') {
-      // Загружаем ответы участников
-      const res = await api.get(`/responses/participant/${eventId}`)
-      responses = res.data || []
+      // Загружаем участников и их ответы
+      const participantsRes = await api.get(`/participants/${eventId}`)
+      const participants = participantsRes.data || []
+
+      // Получаем ответы для каждого участника
+      for (const participant of participants) {
+        try {
+          const responseRes = await api.get(`/responses/participant/${eventId}/${participant.id}`)
+          if (responseRes.data && responseRes.data.responses) {
+            responses.push({
+              participantId: participant.id,
+              responses: responseRes.data.responses
+            })
+          }
+        } catch (e) {
+          console.error(`Ошибка получения ответов для участника ${participant.id}:`, e)
+        }
+      }
     } else {
-      // Загружаем ответы команд
-      const res = await api.get(`/responses/team/${eventId}`)
-      responses = res.data || []
+      // Загружаем команды и их ответы
+      const teamsRes = await api.get(`/teams/${eventId}`)
+      const teams = teamsRes.data || []
+
+      // Получаем ответы для каждой команды
+      for (const team of teams) {
+        try {
+          const responseRes = await api.get(`/responses/team/${eventId}/${team.id}`)
+          if (responseRes.data && responseRes.data.responses) {
+            responses.push({
+              teamId: team.id,
+              responses: responseRes.data.responses
+            })
+          }
+        } catch (e) {
+          console.error(`Ошибка получения ответов для команды ${team.id}:`, e)
+        }
+      }
     }
 
     answers.value = responses
@@ -201,10 +411,20 @@ const loadAnswers = async (eventId) => {
 const removeParticipant = async (participantId) => {
   if (!confirm('Удалить участника?')) return
   try {
-    await api.delete(`/participants/${participantId}`)
+    // Получаем userId из participantId
+    const participant = participants.value.find(p => p.participantId === participantId)
+    if (!participant) {
+      toast.error('Участник не найден')
+      return
+    }
+
+    // Используем userId из данных участника
+    await api.delete(`/participants/${participant.userId}/${selectedEvent.value.id}`)
     participants.value = participants.value.filter(p => p.participantId !== participantId)
+    toast.success('Участник удален')
   } catch (e) {
     console.error('Ошибка при удалении:', e)
+    toast.error('Ошибка при удалении участника')
   }
 }
 
@@ -223,35 +443,8 @@ watch(selectedField, async (field) => {
   if (!field || !selectedEvent.value) return
   await loadAnswers(selectedEvent.value.id)
 })
-
-const aggregatedAnswers = computed(() => {
-  if (!selectedField.value || !answers.value.length) return []
-
-  const fieldKey = selectedField.value.label
-  const map = new Map()
-
-  answers.value.forEach(resp => {
-    const val = resp.responses?.[fieldKey]
-    if (val === undefined || val === null) return
-
-    // Для числовых полей группируем по диапазонам
-    if (selectedField.value.type === 'number') {
-      const numVal = Number(val)
-      if (isNaN(numVal)) return
-
-      // Группируем по диапазонам (например, 0-10, 11-20, и т.д.)
-      const range = Math.floor(numVal / 10) * 10
-      const rangeKey = `${range}-${range + 9}`
-      map.set(rangeKey, (map.get(rangeKey) || 0) + 1)
-    } else {
-      // Для строковых полей просто считаем количество
-      map.set(val, (map.get(val) || 0) + 1)
-    }
-  })
-
-  return Array.from(map.entries())
-    .map(([option, count]) => ({ option, count }))
-    .sort((a, b) => b.count - a.count) // Сортируем по убыванию количества
+watch(aggregatedAnswers, () => {
+  renderChart()
 })
 
 const toggleSidebar = () => {
@@ -966,5 +1159,206 @@ onMounted(async () => {
     backdrop-filter: blur(4px);
     z-index: 998;
   }
+
+  /* Мобильные стили для команд */
+  .team {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .team-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .team-name {
+    font-size: 1.1rem;
+  }
+
+  .team-member-count {
+    font-size: 0.85rem;
+  }
+
+  .team-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .team-action-btn {
+    padding: 0.8rem;
+    font-size: 1.2rem;
+  }
+
+  .team-member {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 1rem;
+  }
+
+  .member-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .member-info {
+    width: 100%;
+  }
+
+  .member-name {
+    font-size: 1rem;
+  }
+
+  .member-email {
+    font-size: 0.9rem;
+  }
+
+  .leader-badge {
+    align-self: flex-start;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Стили для команд */
+.no-teams {
+  text-align: center;
+  padding: 2rem;
+  color: #888;
+  font-style: italic;
+}
+
+.teams-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.team {
+  background: #333;
+  border-radius: 12px;
+  padding: 1.2rem;
+  border: 1px solid #444;
+  transition: all 0.3s ease;
+}
+
+.team:hover {
+  transform: translateY(-2px);
+  border-color: #9333ea;
+  box-shadow: 0 4px 20px rgba(147, 51, 234, 0.2);
+}
+
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid #444;
+}
+
+.team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.team-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+
+.team-member-count {
+  font-size: 0.9rem;
+  color: #888;
+}
+
+.team-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.team-action-btn {
+  background: #444;
+  border: none;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.team-action-btn:hover {
+  background: #555;
+  transform: scale(1.1);
+}
+
+.team-members {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.team-member {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem;
+  background: #2a2a2a;
+  border-radius: 8px;
+  border: 1px solid #333;
+  transition: all 0.3s ease;
+}
+
+.team-member:hover {
+  border-color: #9333ea;
+  background: #333;
+}
+
+.member-avatar {
+  width: 32px;
+  height: 32px;
+  background: #666;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.team-member:hover .member-avatar {
+  transform: scale(1.1);
+}
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.member-name {
+  font-weight: 500;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.member-email {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.leader-badge {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #000;
+  padding: 0.3rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
 }
 </style>

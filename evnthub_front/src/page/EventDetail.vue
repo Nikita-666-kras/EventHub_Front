@@ -68,7 +68,8 @@
                         </div>
                     </div>
 
-                    <form class="custom-fields-form" @submit.prevent="register">
+                    <form class="custom-fields-form" @submit.prevent="register"
+                        v-if="!isRegistered && !isCreator && showIndividualRegistration">
                         <div v-for="field in customFields" :key="field.name" class="custom-field">
                             <label :for="field.name">
                                 {{ field.name }}
@@ -86,6 +87,63 @@
                             Зарегистрироваться
                         </button>
                     </form>
+
+                    <div v-if="!isRegistered && !isCreator && showTeamRegistration" class="team-registration-section">
+                        <div v-if="isTeamOnly" class="team-only-notice">
+                            <h4>Регистрация только командами</h4>
+                            <p>Для участия в этом мероприятии необходимо создать или присоединиться к команде</p>
+                        </div>
+                        <div v-else class="team-option-notice">
+                            <h4>Регистрация командами</h4>
+                            <p>Вы также можете зарегистрироваться командой</p>
+                        </div>
+                        <div class="team-buttons">
+                            <button class="team-btn create-team"
+                                @click="$router.push(`/team?eventId=${route.params.id}`)">
+                                Создать команду
+                            </button>
+                            <button class="team-btn join-team"
+                                @click="$router.push(`/team?eventId=${route.params.id}`)">
+                                Присоединиться к команде
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="isCreator" class="creator-preview">
+                        <h4>Предварительный просмотр формы регистрации</h4>
+                        <p class="creator-note">Как создатель мероприятия, вы видите форму регистрации, которую увидят
+                            участники</p>
+                        <div class="custom-fields-form creator-form">
+                            <div v-for="field in customFields" :key="field.name" class="custom-field">
+                                <label :for="field.name">
+                                    {{ field.name }}
+                                    <span v-if="field.required">*</span>
+                                    <span class="field-hint" v-if="field.hint">{{ field.hint }}</span>
+                                </label>
+                                <input v-model="customFieldValues[field.name]" :id="field.name"
+                                    :type="field.type === 'number' ? 'number' : 'text'" :required="field.required"
+                                    disabled :class="{ 'error': fieldErrors[field.name] }" />
+                                <span class="error-message" v-if="fieldErrors[field.name]">
+                                    {{ fieldErrors[field.name] }}
+                                </span>
+                            </div>
+                            <button class="register-btn" type="button" disabled>
+                                Зарегистрироваться (недоступно для создателя)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-else-if="isRegistered" class="already-registered">
+                        <p>Вы уже зарегистрированы на это мероприятие</p>
+                        <div class="registered-actions">
+                            <button class="view-stats-btn" @click="$router.push('/lenta')">
+                                Лента
+                            </button>
+                            <button class="cancel-registration-btn" @click="cancelRegistration">
+                                Отменить участие
+                            </button>
+                        </div>
+                    </div>
 
                     <div class="share-buttons">
                         <button @click="shareEvent('vk')" class="share-btn vk">
@@ -124,9 +182,10 @@ const customFields = ref([])
 const customFieldValues = ref({})
 const loading = ref(true)
 const fieldErrors = ref({})
+const isRegistered = ref(false)
+const isCreator = ref(false)
+const eventGrouping = ref('both')
 const toast = useToast()
-
-console.log(event)
 
 onMounted(async () => {
     const eventId = route.params.id
@@ -134,18 +193,56 @@ onMounted(async () => {
         const res = await api.get(`/event/${eventId}`)
         event.value = res.data
 
+        // Получаем тип группировки из данных мероприятия
+        eventGrouping.value = res.data.qrCode || res.data.grouping || 'both'
+
         const userRes = await api.get(`/users/${res.data.creatorId}`)
         creator.value = userRes.data
+
+        // Проверяем, является ли пользователь создателем мероприятия
+        const userId = getUserIdFromToken()
+        if (userId) {
+            // Проверяем, является ли пользователь создателем
+            isCreator.value = userId === res.data.creatorId
+
+            if (!isCreator.value) {
+                // Проверяем регистрацию только если пользователь не создатель
+                try {
+                    const checkRes = await api.get(`/participants/check/${userId}/${eventId}`)
+                    // Проверяем поле isRegistered в ответе
+                    isRegistered.value = checkRes.data && checkRes.data.isRegistered === true
+                } catch (e) {
+                    // Если ошибка 404 или другая, значит не зарегистрирован
+                    isRegistered.value = false
+                }
+            }
+        } else {
+            isRegistered.value = false
+        }
+
         // Получаем кастомные поля для участника
         try {
-            const customRes = await api.get(`/responses/custom-fields/participant/${res.data.id || eventId}`)
-            customFields.value = customRes.data.fields || []
+            const customRes = await api.get(`/responses/custom-fields/participant/${eventId}`)
+            // Проверяем структуру ответа
+            if (customRes.data && Array.isArray(customRes.data)) {
+                customFields.value = customRes.data
+            } else if (customRes.data && Array.isArray(customRes.data.fields)) {
+                customFields.value = customRes.data.fields
+            } else {
+                customFields.value = []
+            }
+
+            // Инициализируем значения полей
             customFields.value.forEach(field => {
                 customFieldValues.value[field.name] = ''
             })
         } catch (e) {
             console.error('Ошибка загрузки кастомных полей:', e)
-            toast.error('Ошибка загрузки дополнительных полей')
+            customFields.value = []
+            // Не показываем ошибку, если полей просто нет
+            if (e.response?.status !== 404) {
+                toast.error('Ошибка загрузки дополнительных полей')
+            }
         }
     } catch (e) {
         console.error('Ошибка загрузки данных:', e)
@@ -187,17 +284,44 @@ const getRelativeTime = (date) => {
 
 const validateField = (field) => {
     const value = customFieldValues.value[field.name]
-    if (field.required && !value) {
+
+    if (field.required && (!value || value.trim() === '')) {
         fieldErrors.value[field.name] = 'Это поле обязательно'
-    } else if (field.type === 'number' && isNaN(value)) {
+        return false
+    } else if (field.type === 'number' && value && isNaN(Number(value))) {
         fieldErrors.value[field.name] = 'Введите число'
+        return false
     } else {
         fieldErrors.value[field.name] = ''
+        return true
     }
 }
 
 const isFormValid = computed(() => {
-    return !Object.values(fieldErrors.value).some(error => error)
+    // Проверяем все обязательные поля
+    const requiredFields = customFields.value.filter(field => field.required)
+    const hasErrors = Object.values(fieldErrors.value).some(error => error)
+
+    // Проверяем, что все обязательные поля заполнены
+    const allRequiredFilled = requiredFields.every(field => {
+        const value = customFieldValues.value[field.name]
+        return value && value.trim() !== ''
+    })
+
+    return !hasErrors && allRequiredFilled
+})
+
+// Добавляем computed свойства для командной регистрации
+const showTeamRegistration = computed(() => {
+    return eventGrouping.value === 'group' || eventGrouping.value === 'both'
+})
+
+const showIndividualRegistration = computed(() => {
+    return eventGrouping.value === 'solo' || eventGrouping.value === 'both'
+})
+
+const isTeamOnly = computed(() => {
+    return eventGrouping.value === 'group'
 })
 
 const shareEvent = (platform) => {
@@ -223,10 +347,13 @@ const getUserIdFromToken = () => {
     const token = document.cookie
         .split('; ')
         .find(row => row.startsWith('jwt='))?.split('=')[1]
-    if (!token) return null
+    if (!token) {
+        return null
+    }
     try {
         const payload = JSON.parse(atob(token.split('.')[1]))
-        return payload.sub || payload.userId
+        const userId = payload.sub || payload.userId
+        return userId
     } catch (e) {
         console.error('JWT decode error', e)
         return null
@@ -237,22 +364,125 @@ const register = async () => {
     const eventId = route.params.id
     try {
         const userId = getUserIdFromToken()
+        if (!userId) {
+            toast.error('Необходимо войти в систему')
+            return
+        }
+
+        // Проверяем, не является ли пользователь создателем
+        if (isCreator.value) {
+            toast.error('Создатель мероприятия не может регистрироваться на своё мероприятие')
+            return
+        }
+
+        // Валидируем все поля перед отправкой
+        let isValid = true
+        customFields.value.forEach(field => {
+            if (!validateField(field)) {
+                isValid = false
+            }
+        })
+
+        if (!isValid) {
+            toast.error('Пожалуйста, исправьте ошибки в форме')
+            return
+        }
+
         // 1. Основная регистрация
-        await api.post('/participants/register', {
+        const registrationRes = await api.post('/participants/register', {
             userId: userId,
             eventId: eventId,
             teamId: null
         })
-        // 2. Отправка кастомных полей
-        await api.post('/responses/participant/submit', {
-            event_id: eventId,
-            participant_id: userId,
-            responses: customFieldValues.value
-        })
+
+        // Получаем participant_id из ответа регистрации
+        const participantId = registrationRes.data.id || registrationRes.data.participantId
+
+        // 2. Отправка кастомных полей только если они есть и заполнены
+        if (customFields.value.length > 0 && Object.keys(customFieldValues.value).some(key => customFieldValues.value[key])) {
+            await api.post('/responses/participant/submit', {
+                event_id: eventId,
+                participant_id: participantId,
+                responses: customFieldValues.value
+            })
+        }
+
         toast.success('Вы успешно зарегистрированы!')
+
+        // Обновляем статус регистрации
+        isRegistered.value = true
+
+        // Обновляем количество участников
+        event.value.currentParticipantQuantity += 1
+
+        // Перенаправляем на страницу статистики или обновляем страницу
+        setTimeout(() => {
+            window.location.reload()
+        }, 1500)
+
     } catch (e) {
         console.error('Ошибка при регистрации:', e)
-        toast.error('Ошибка при регистрации')
+        if (e.response?.status === 409) {
+            toast.error('Вы уже зарегистрированы на это мероприятие')
+        } else if (e.response?.status === 400) {
+            toast.error('Ошибка в данных формы')
+        } else {
+            toast.error('Ошибка при регистрации')
+        }
+    }
+}
+
+const cancelRegistration = async () => {
+    const eventId = route.params.id
+
+    // Добавляем подтверждение
+    if (!confirm('Вы уверены, что хотите отменить участие в мероприятии?')) {
+        return
+    }
+
+    try {
+        const userId = getUserIdFromToken()
+        if (!userId) {
+            toast.error('Необходимо войти в систему')
+            return
+        }
+
+        // Проверяем, не является ли пользователь создателем
+        if (isCreator.value) {
+            toast.error('Создатель мероприятия не может отменить свою регистрацию')
+            return
+        }
+
+        // Получаем информацию о регистрации участника
+        const participantInfo = await api.get(`/participants/${userId}/${eventId}/info`)
+        if (!participantInfo.data || !participantInfo.data.id) {
+            toast.error('Информация о регистрации не найдена')
+            return
+        }
+
+        // Отправляем запрос на отмену регистрации
+        await api.delete(`/participants/${userId}/${eventId}`)
+
+        toast.success('Вы успешно отменили участие в мероприятии')
+
+        // Обновляем статус регистрации
+        isRegistered.value = false
+
+        // Обновляем количество участников
+        event.value.currentParticipantQuantity -= 1
+
+        // Перенаправляем на страницу статистики или обновляем страницу
+        setTimeout(() => {
+            window.location.reload()
+        }, 1500)
+
+    } catch (e) {
+        console.error('Ошибка при отмене регистрации:', e)
+        if (e.response?.status === 404) {
+            toast.error('Регистрация не найдена')
+        } else {
+            toast.error('Ошибка при отмене регистрации')
+        }
     }
 }
 </script>
@@ -591,6 +821,26 @@ const register = async () => {
     outline: none;
 }
 
+.custom-field input:disabled {
+    background: #333;
+    color: #666;
+    cursor: not-allowed;
+    border-color: #555;
+}
+
+.register-btn:disabled {
+    background: #666;
+    cursor: not-allowed;
+    animation: none;
+    transform: none;
+}
+
+.register-btn:disabled:hover {
+    background: #666;
+    transform: none;
+    box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3);
+}
+
 .back-button {
     background: #2a2a2a;
     border: 1px solid #333;
@@ -767,6 +1017,46 @@ const register = async () => {
         width: 100%;
         justify-content: center;
     }
+
+    .team-registration-section {
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .team-buttons {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .team-btn {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1rem;
+    }
+
+    .team-only-notice h4,
+    .team-option-notice h4 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .team-only-notice p,
+    .team-option-notice p {
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+
+    .registered-actions {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .view-stats-btn,
+    .cancel-registration-btn {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1rem;
+    }
 }
 
 .qr-section {
@@ -806,5 +1096,123 @@ const register = async () => {
     display: inline-block;
     border-radius: 8px;
     margin: 1rem 0;
+}
+
+.already-registered {
+    text-align: center;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #232323;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+.already-registered p {
+    margin-bottom: 1rem;
+}
+
+.view-stats-btn {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.8rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.view-stats-btn:hover {
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.creator-preview {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #232323;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+.creator-preview h4 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.creator-note {
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 1rem;
+}
+
+.creator-form {
+    margin-top: 1rem;
+}
+
+.team-registration-section {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #232323;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+.team-only-notice,
+.team-option-notice {
+    margin-bottom: 1rem;
+}
+
+.team-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.team-btn {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.8rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.team-btn:hover {
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.registered-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.cancel-registration-btn {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.8rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cancel-registration-btn:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(239, 70, 70, 0.4);
 }
 </style>
