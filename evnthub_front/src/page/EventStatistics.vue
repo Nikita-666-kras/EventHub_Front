@@ -53,7 +53,7 @@
         <div class="participants-box">
           <h3>Участвуют</h3>
           <template v-if="viewMode === 'single'">
-            <div class="participant" v-for="(p, i) in participants" :key="i">
+  <div class="participant" v-for="(p, i) in singleParticipants" :key="i">
               <div class="avatar"></div>
               <span class="name">{{ p.name }}</span>
               <span class="email">{{ p.email }}</span>
@@ -121,6 +121,8 @@ import { onBeforeUnmount } from 'vue'
 Chart.register(...registerables)
 
 const toast = useToast()
+// для отображения одиночных участников
+const singleParticipants = ref([])
 
 const viewMode = ref('single')
 const selectedField = ref(null)
@@ -256,14 +258,12 @@ const selectEvent = async (event) => {
 
 const loadParticipants = async (eventId) => {
   try {
-    const res = await api.get(`/events/${eventId}/participants`)
+    const res = await api.get(`/participants/${eventId}`)
     const participants = res.data || []
 
-    // Обрабатываем каждого участника, чтобы получить детальную информацию
     const processedParticipants = await Promise.all(
       participants.map(async (participant) => {
         try {
-          // Если у участника есть userId, получаем детальную информацию
           if (participant.userId) {
             const userRes = await api.get(`/users/${participant.userId}`)
             return {
@@ -272,7 +272,6 @@ const loadParticipants = async (eventId) => {
               email: userRes.data.email || 'Email не указан'
             }
           }
-          // Если нет userId, используем доступные данные
           return {
             ...participant,
             name: participant.name || participant.nickname || 'Без имени',
@@ -289,57 +288,48 @@ const loadParticipants = async (eventId) => {
       })
     )
 
-    groupedParticipants.value = processedParticipants
+    singleParticipants.value = processedParticipants
   } catch (e) {
     console.error('Ошибка загрузки участников:', e)
-    groupedParticipants.value = []
+    singleParticipants.value = []
   }
 }
 
-const loadTeams = async (userId) => {
-  try {
-    const res = await api.get(`/teams/${userId}`)
-    const teams = res.data || []
 
-    // Обрабатываем каждую команду, чтобы получить детальную информацию об участниках
+const loadTeams = async (eventId) => {
+  try {
+    const res = await api.get(`/teams/${eventId}`)
+    const teams = Array.isArray(res.data) ? res.data : []
+
     const processedTeams = await Promise.all(
       teams.map(async (team) => {
-        if (team.members && Array.isArray(team.members)) {
-          // Получаем детальную информацию о каждом участнике команды
-          const processedMembers = await Promise.all(
-            team.members.map(async (member) => {
-              try {
-                // Если у участника есть userId, получаем детальную информацию
-                if (member.userId) {
-                  const userRes = await api.get(`/users/${member.userId}`)
-                  return {
-                    ...member,
-                    name: userRes.data.name || member.nickname || 'Без имени',
-                    email: userRes.data.email || 'Email не указан'
-                  }
-                }
-                // Если нет userId, используем доступные данные
+        const processedMembers = await Promise.all(
+          (team.members || []).map(async (member) => {
+            try {
+              if (member.userId) {
+                const userRes = await api.get(`/users/${member.userId}`)
                 return {
                   ...member,
-                  name: member.name || member.nickname || 'Без имени',
-                  email: member.email || 'Email не указан'
-                }
-              } catch (e) {
-                console.error(`Ошибка получения данных участника ${member.userId || member.id}:`, e)
-                return {
-                  ...member,
-                  name: member.name || member.nickname || 'Ошибка загрузки',
-                  email: member.email || 'Email не указан'
+                  name: userRes.data.name || member.nickname || 'Без имени',
+                  email: userRes.data.email || 'Email не указан',
                 }
               }
-            })
-          )
-          return {
-            ...team,
-            members: processedMembers
-          }
-        }
-        return team
+              return {
+                ...member,
+                name: member.name || member.nickname || 'Без имени',
+                email: member.email || 'Email не указан',
+              }
+            } catch (e) {
+              console.error(`Ошибка получения данных участника ${member.userId || member.id}:`, e)
+              return {
+                ...member,
+                name: member.name || member.nickname || 'Ошибка загрузки',
+                email: member.email || 'Email не указан',
+              }
+            }
+          })
+        )
+        return { ...team, members: processedMembers }
       })
     )
 
@@ -349,6 +339,8 @@ const loadTeams = async (userId) => {
     groupedParticipants.value = []
   }
 }
+
+
 
 const viewTeamDetails = (team) => {
   // Показываем информацию о команде в toast или можно добавить модальное окно

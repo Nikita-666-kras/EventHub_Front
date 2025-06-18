@@ -208,6 +208,7 @@
                                         <button @click="addOption(index)"
                                             title="Добавить введенный вариант в список.">Добавить</button>
                                     </div>
+                                    <span v-if="field.type === 'select' && (!field.options || field.options.length === 0)" style="color:#ef4444;font-size:0.9em;">Добавьте хотя бы один вариант</span>
                                 </div>
                                 <input v-if="field.type === 'text'" disabled placeholder="Текст..."
                                     title="Поле для ввода текстовой информации." />
@@ -248,10 +249,7 @@
                         <h4>Мои мероприятия</h4>
                     </div>
                     <div class="event-sidebar-scroll">
-                        <div v-if="isLoadingEvent" class="loading-indicator">
-                            <div class="spinner"></div>
-                            <p>Загрузка данных...</p>
-                        </div>
+                        
                         <div class="upcoming-event" v-for="ev in upcomingEvents" :key="ev.id" @click="selectEvent(ev)"
                             :class="{ active: selectedEventId === ev.id }"
                             :title="`Кликните, чтобы загрузить данные мероприятия '${ev.eventName}' для редактирования.`">
@@ -797,6 +795,11 @@ const submitEvent = async () => {
             alert('Пожалуйста, выберите корректную дату')
             return
         }
+        // ДОБАВЛЯЮ ВАЛИДАЦИЮ КАСТОМНЫХ ПОЛЕЙ
+        if (!validateCustomFields()) {
+            alert('Проверьте все кастомные поля: для select-полей обязательно добавьте хотя бы один вариант!')
+            return
+        }
 
         const token = await getValidToken()
         if (!token) {
@@ -1302,6 +1305,22 @@ watch(() => event.value.qrCode, (newQrCode) => {
         }
     }
 }, { immediate: true }) // Добавляем immediate: true для выполнения при инициализации
+
+// Добавляю функцию для валидации кастомных полей
+function validateCustomFields() {
+    let valid = true;
+    for (const mode of ['participant', 'group']) {
+        for (const field of event.value.fields[mode]) {
+            if (!field.label || !field.type) {
+                valid = false;
+            }
+            if (field.type === 'select' && (!field.options || field.options.length === 0)) {
+                valid = false;
+            }
+        }
+    }
+    return valid;
+}
 </script>
 
 <style scoped>

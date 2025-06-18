@@ -26,17 +26,20 @@
         <div class="profile-header">
           <p class="section-title">Профиль</p>
           <div class="actions">
-            <img src="@/assets/login_icons/push.png" alt="Уведомления" class="imge" @click="toggleInvitesPopup" />
+            <div class="notif-icon-wrapper">
+              <img src="@/assets/login_icons/push.png" alt="Уведомления" class="imge" @click="toggleInvitesPopup" />
+              <span v-if="teamInvites.length > 0" class="notif-dot"></span>
+            </div>
             <img src="@/assets/login_icons/redact.png" alt="Редактировать" class="imge" @click="startEdit"
               v-if="!isEditing" />
             <div v-if="invitesPopupVisible" class="invites-popup">
               <h4>Приглашения в команды</h4>
               <div v-if="teamInvites.length === 0">Нет приглашений</div>
-              <div v-for="invite in teamInvites" :key="invite.id" class="invite-card">
+              <div v-for="invite in teamInvites" :key="invite.inviteId || invite.id" class="invite-card">
                 <p>Команда: {{ invite.teamName || invite.teamId }}</p>
                 <div class="buttons">
-                  <button @click="respondToInvite(invite.id, 'APPROVED')">Принять</button>
-                  <button @click="respondToInvite(invite.id, 'REJECTED')">Отклонить</button>
+                  <button @click="respondToInvite(invite.inviteId || invite.id, 'accepted')">Принять</button>
+                  <button @click="respondToInvite(invite.id, 'rejected')">Отклонить</button>
                 </div>
               </div>
             </div>
@@ -180,6 +183,16 @@ const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value
   document.body.style.overflow = isSidebarOpen.value ? 'hidden' : ''
 }
+
+
+const toggleInvitesPopup = async () => {
+  invitesPopupVisible.value = !invitesPopupVisible.value
+  if (invitesPopupVisible.value) {
+    const userId = getUserIdFromToken()
+    await loadTeamInvites(userId)
+  }
+}
+
 
 // Закрываем сайдбар при изменении размера окна
 onMounted(() => {
@@ -356,23 +369,46 @@ const showToast = (msg, type = 'info') => {
 }
 
 const respondToInvite = async (inviteId, status) => {
+
+
   try {
     await api.patch(`/teams/invites/${inviteId}/status`, { status })
     teamInvites.value = teamInvites.value.filter(i => i.id !== inviteId)
-    showToast(`Приглашение ${status === 'APPROVED' ? 'принято' : 'отклонено'}`, 'success')
+    showToast(`Приглашение ${status === 'accepted' ? 'принято' : 'отклонено'}`, 'success')
   } catch (e) {
     showToast('Ошибка при ответе на приглашение', 'error')
   }
 }
 
-const toggleInvitesPopup = () => {
-  invitesPopupVisible.value = !invitesPopupVisible.value
+
+const getParticipantId = async (userId) => {
+  try {
+    const eventsRes = await api.get(`/events/participant/${userId}`)
+    const upcoming = eventsRes.data?.find(e => new Date(e.startDateAndTime) > new Date())
+    if (!upcoming) return null
+
+    const res = await api.get(`/participants/${userId}/${upcoming.id}/info`)
+    return res.data?.id || null
+  } catch (e) {
+    console.error('❌ Ошибка получения participantId:', e)
+    return null
+  }
 }
+
+
 
 const loadTeamInvites = async (userId) => {
   try {
-    const res = await api.get(`/teams/invites/by-participant/${userId}`)
-    teamInvites.value = res.data || []
+    const participantId = await getParticipantId(userId)
+    if (!participantId) {
+      console.warn('⚠️ Не удалось получить participantId для загрузки инвайтов')
+      return
+    }
+
+    const res = await api.get(`/teams/invites/by-participant/${participantId}`)
+    teamInvites.value = res.data?.invites || []
+
+    console.log('📨 Загруженные инвайты:', teamInvites.value)
   } catch (e) {
     console.error('Ошибка загрузки приглашений:', e)
   }
@@ -505,7 +541,10 @@ onMounted(async () => {
       return startDate && startDate >= now
     })
 
-    await loadTeamInvites(userId)
+    if (userId) {
+      await loadTeamInvites(userId)
+    }
+
   } catch (e) {
     console.error('Ошибка загрузки данных:', e)
     error.value = 'Не удалось загрузить данные. Пожалуйста, попробуйте позже.'
@@ -844,6 +883,20 @@ const goToEvent = (eventId) => {
 
 .event-sidebar-scroll::-webkit-scrollbar {
   display: none;
+}
+
+.notif-icon-wrapper {
+  position: relative;
+}
+
+.notif-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #ef4444;
+  border-radius: 50%;
+  width: 10px;
+  height: 10px;
 }
 
 .event-upcoming {

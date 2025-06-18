@@ -23,6 +23,10 @@
                         <input id="imageInput" type="file" accept="image/*" @change="handleImageUpload" hidden />
                     </div>
                 </div>
+                <p v-if="isTeamCreated && teamEventName" class="team-event-name">
+                    Мероприятие: <strong>{{ teamEventName }}</strong>
+                </p>
+
 
                 <div v-if="!isTeamCreated" class="form-group">
                     <label for="eventSelect">Выберите мероприятие</label>
@@ -409,24 +413,40 @@ const isFormValid = computed(() => {
     return !hasErrors && allRequiredFilled
 })
 
+
+
+const teamEventName = computed(() => {
+    if (!selectedTeam.value || !selectedTeam.value.event_id) return ''
+    const event = availableEvents.value.find(ev => ev.id === selectedTeam.value.event_id)
+    return event ? event.eventName : ''
+})
+
+
+
+
 const loadUserTeams = async () => {
     const userId = getUserIdFromToken()
     console.log('[DEBUG] loadUserTeams: userId из токена:', userId)
     console.log('[DEBUG] loadUserTeams: document.cookie:', document.cookie)
+
     if (!userId) return
     try {
         const asParticipant = await api.get(`/teams/user/${userId}`)
+        const participantTeams = Array.isArray(asParticipant.data)
+            ? asParticipant.data
+            : (asParticipant.data === null ? [] : [asParticipant.data])
+
+
         console.log('[DEBUG] loadUserTeams: GET /teams/user/' + userId + ' response:', asParticipant)
         const eventsCreated = await api.get(`/events/creator/${userId}`)
 
-        // Проверяем, что eventsCreated.data существует и является массивом
         const eventsData = eventsCreated.data || []
         const teamPromises = eventsData.map(ev =>
             api.get(`/teams/${ev.id}`).then(res => res.data.teams || [])
         )
         const teamsByEvents = await Promise.all(teamPromises)
         const asLeader = teamsByEvents.flat()
-        const combined = [...(asParticipant.data || []), ...asLeader]
+        const combined = [...participantTeams, ...asLeader]
         const map = new Map()
         for (const team of combined) {
             map.set(team.id, team)
@@ -439,9 +459,12 @@ const loadUserTeams = async () => {
     }
 }
 
+
 const selectTeam = async (teamItem) => {
+
     console.log('📌 selectTeam:', teamItem)
     selectedTeam.value = teamItem
+    selectedEventId.value = teamItem.event_id
     const resMembers = await api.get(`/teams/${teamItem.id}/members`)
     team.value = { ...teamItem, members: resMembers.data?.members || [] }
 
@@ -620,15 +643,28 @@ const submitTeam = async () => {
                 console.error('❌ Ошибка при регистрации участника:', checkErr)
             }
         }
-
+        await new Promise(resolve => setTimeout(resolve, 1000)) // подождать 1 секунду (чтобы team-service успел сохранить команду)
         await loadUserTeams()
-        const newTeam = userTeams.value.find(t => t.id === createdId)
-        if (newTeam) {
-            await selectTeam(newTeam)
-            alert('Команда успешно создана! Теперь вы можете приглашать участников.')
-        } else {
-            alert('Команда создана, но произошла ошибка при загрузке данных. Попробуйте обновить страницу.')
+
+        let newTeam = userTeams.value.find(t => t.id === createdId)
+
+        if (!newTeam) {
+            console.warn('⚠️ Команда не найдена в userTeams. Добавляем вручную.')
+            newTeam = {
+                id: createdId,
+                name: team.value.name,
+                event_id: selectedEventId.value,
+                leader_id: userId,
+                type: 'FIXED',
+                members: [] // или добавь сюда себя, если хочешь отразить участника
+            }
+            userTeams.value.unshift(newTeam)
         }
+
+
+        await selectTeam(newTeam)
+        toast.success('Команда успешно создана! Теперь вы можете приглашать участников.')
+
     } catch (e) {
         console.error('[DEBUG] submitTeam: Ошибка:', e)
         if (e.response?.status === 409) {
@@ -1053,6 +1089,15 @@ const loadEventById = async (eventId) => {
     margin-bottom: 1.5rem;
     align-items: center;
 }
+
+
+.team-event-name {
+    margin-top: -1rem;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    color: #ccc;
+}
+
 
 .team-title {
     flex: 1;
